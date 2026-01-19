@@ -1,0 +1,37 @@
+# AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+
+# Web Framework
+mangum>=0.17.0
+
+# Data Validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# HTTP Client
+httpx>=0.25.0
+aiohttp>=3.9.0
+
+# Date/Time
+python-dateutil>=2.8.2
+
+# Logging
+structlog>=23.2.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+moto>=4.2.0
+
+# Type Checking
+mypy>=1.7.0
+boto3-stubs[dynamodb,events]>=1.34.0
+
+# Linting
+ruff>=0.1.6
+black>=23.11.0
+
+# Environment
+python-dotenv>=1.0.0
