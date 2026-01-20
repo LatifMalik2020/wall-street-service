@@ -30,8 +30,8 @@ def get_upcoming_earnings(
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -48,8 +48,8 @@ def get_earnings_event_detail(event_id: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=event.model_dump(),
-        ).model_dump(),
+            data=event.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -74,8 +74,8 @@ def submit_earnings_prediction(
         "statusCode": 201,
         "body": APIResponse(
             success=True,
-            data=result.model_dump(),
-        ).model_dump(),
+            data=result.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -92,8 +92,8 @@ def get_user_earnings_predictions(user_id: str, limit: int = 50) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data={"predictions": [p.model_dump() for p in predictions]},
-        ).model_dump(),
+            data={"predictions": [p.model_dump(mode="json") for p in predictions]},
+        ).model_dump(mode="json"),
     }
 
 
@@ -110,6 +110,6 @@ def get_user_earnings_stats(user_id: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=stats.model_dump(),
-        ).model_dump(),
+            data=stats.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }

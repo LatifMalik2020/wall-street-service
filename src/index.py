@@ -289,7 +289,8 @@ def _get_user_id(event: dict) -> str | None:
 
     # From request body or query string (for testing)
     body = _parse_body(event)
-    return body.get("userId") or event.get("queryStringParameters", {}).get("userId")
+    query_params = event.get("queryStringParameters") or {}
+    return body.get("userId") or query_params.get("userId")
 
 
 def _require_auth(user_id: str | None) -> None:

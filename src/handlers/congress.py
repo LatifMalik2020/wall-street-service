@@ -38,8 +38,8 @@ def get_congress_trades(
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -56,8 +56,8 @@ def get_congress_trade_detail(trade_id: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=trade.model_dump(),
-        ).model_dump(),
+            data=trade.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -74,8 +74,8 @@ def get_congress_members(page: int = 1, page_size: int = 50) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -92,8 +92,8 @@ def get_congress_member_detail(member_id: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=member.model_dump(),
-        ).model_dump(),
+            data=member.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -110,6 +110,6 @@ def get_congress_member_trades(member_id: str, limit: int = 50) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data={"trades": [t.model_dump() for t in trades]},
-        ).model_dump(),
+            data={"trades": [t.model_dump(mode="json") for t in trades]},
+        ).model_dump(mode="json"),
     }

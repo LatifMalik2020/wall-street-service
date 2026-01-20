@@ -20,8 +20,8 @@ def get_market_talk_episodes(page: int = 1, page_size: int = 20) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -38,8 +38,8 @@ def get_market_talk_episode_detail(episode_id: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=episode.model_dump(),
-        ).model_dump(),
+            data=episode.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -56,8 +56,8 @@ def get_market_talk_latest() -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -82,6 +82,6 @@ def generate_market_talk(
         "statusCode": 201,
         "body": APIResponse(
             success=True,
-            data=episode.model_dump(),
-        ).model_dump(),
+            data=episode.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }

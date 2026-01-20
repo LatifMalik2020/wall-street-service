@@ -30,8 +30,8 @@ def get_beat_congress_games(
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -48,8 +48,8 @@ def get_beat_congress_game_detail(user_id: str, game_id: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=game.model_dump(),
-        ).model_dump(),
+            data=game.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -74,8 +74,8 @@ def create_beat_congress_game(
         "statusCode": 201,
         "body": APIResponse(
             success=True,
-            data=game.model_dump(),
-        ).model_dump(),
+            data=game.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -100,8 +100,8 @@ def get_beat_congress_leaderboard(
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -118,6 +118,6 @@ def get_challengeable_members(user_id: str, limit: int = 10) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data={"members": [m.model_dump() for m in members]},
-        ).model_dump(),
+            data={"members": [m.model_dump(mode="json") for m in members]},
+        ).model_dump(mode="json"),
     }

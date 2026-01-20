@@ -30,8 +30,8 @@ def get_cramer_picks(
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=response.model_dump(),
-        ).model_dump(),
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -48,8 +48,8 @@ def get_cramer_pick_detail(ticker: str) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=pick.model_dump(),
-        ).model_dump(),
+            data=pick.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -66,6 +66,6 @@ def get_cramer_stats(days_back: int = 30) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=stats.model_dump(),
-        ).model_dump(),
+            data=stats.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }

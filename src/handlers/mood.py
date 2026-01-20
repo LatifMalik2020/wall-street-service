@@ -20,8 +20,8 @@ def get_market_mood() -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data=mood.model_dump(),
-        ).model_dump(),
+            data=mood.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -46,8 +46,8 @@ def submit_mood_prediction(
         "statusCode": 201,
         "body": APIResponse(
             success=True,
-            data=result.model_dump(),
-        ).model_dump(),
+            data=result.model_dump(mode="json"),
+        ).model_dump(mode="json"),
     }
 
 
@@ -64,6 +64,6 @@ def get_user_mood_predictions(user_id: str, limit: int = 30) -> dict:
         "statusCode": 200,
         "body": APIResponse(
             success=True,
-            data={"predictions": [p.model_dump() for p in predictions]},
-        ).model_dump(),
+            data={"predictions": [p.model_dump(mode="json") for p in predictions]},
+        ).model_dump(mode="json"),
     }
