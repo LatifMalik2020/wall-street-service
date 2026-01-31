@@ -1,10 +1,25 @@
 """Earnings Predictions API handlers."""
 
+import json
 from typing import Optional
 
 from src.services.earnings import EarningsService
 from src.models.base import APIResponse
 from src.utils.logging import logger
+
+
+def _response(status_code: int, body: dict) -> dict:
+    """Format API response with JSON string body and CORS headers."""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        },
+        "body": json.dumps(body),
+    }
 
 
 def get_upcoming_earnings(
@@ -26,13 +41,10 @@ def get_upcoming_earnings(
         page_size=page_size,
     )
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_earnings_event_detail(event_id: str) -> dict:
@@ -44,13 +56,10 @@ def get_earnings_event_detail(event_id: str) -> dict:
 
     event = service.get_event_detail(event_id)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=event.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=event.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def submit_earnings_prediction(
@@ -61,7 +70,16 @@ def submit_earnings_prediction(
     """Submit an earnings prediction.
 
     POST /wall-street/earnings/predict
+    POST /wall-street/earnings/predict/{ticker}
     """
+    from src.utils.errors import ValidationError
+
+    # Validate required fields
+    if not ticker:
+        raise ValidationError("Ticker is required", field="ticker")
+    if not prediction:
+        raise ValidationError("Prediction is required", field="prediction")
+
     service = EarningsService()
 
     result = service.submit_prediction(
@@ -70,13 +88,10 @@ def submit_earnings_prediction(
         prediction_type=prediction,
     )
 
-    return {
-        "statusCode": 201,
-        "body": APIResponse(
-            success=True,
-            data=result.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(201, APIResponse(
+        success=True,
+        data=result.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_user_earnings_predictions(user_id: str, limit: int = 50) -> dict:
@@ -88,13 +103,10 @@ def get_user_earnings_predictions(user_id: str, limit: int = 50) -> dict:
 
     predictions = service.get_user_predictions(user_id, limit=limit)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data={"predictions": [p.model_dump(mode="json") for p in predictions]},
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data={"predictions": [p.model_dump(mode="json") for p in predictions]},
+    ).model_dump(mode="json"))
 
 
 def get_user_earnings_stats(user_id: str) -> dict:
@@ -106,10 +118,7 @@ def get_user_earnings_stats(user_id: str) -> dict:
 
     stats = service.get_user_stats(user_id)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=stats.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=stats.model_dump(mode="json"),
+    ).model_dump(mode="json"))

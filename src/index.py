@@ -178,11 +178,20 @@ def _handle_http(event: dict) -> dict:
         event_id = path_params.get("eventId") or path.split("/")[-1]
         return get_earnings_event_detail(event_id)
 
-    if path == "/wall-street/earnings/predict" and http_method == "POST":
+    # Support both /wall-street/earnings/predict/{ticker} (iOS format) and /wall-street/earnings/predict (body format)
+    if path.startswith("/wall-street/earnings/predict") and http_method == "POST":
         _require_auth(user_id)
+        # Extract ticker from path if present, otherwise from body
+        ticker = None
+        if path.startswith("/wall-street/earnings/predict/"):
+            ticker = path_params.get("ticker") or path.split("/")[-1]
+        if not ticker:
+            # Support both "ticker" and "eventId" (iOS uses eventId as ticker)
+            ticker = body.get("ticker") or body.get("eventId")
+
         return submit_earnings_prediction(
             user_id=user_id,
-            ticker=body.get("ticker"),
+            ticker=ticker,
             prediction=body.get("prediction"),
         )
 
