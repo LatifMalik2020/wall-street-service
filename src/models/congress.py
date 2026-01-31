@@ -78,6 +78,8 @@ class CongressMember(BaseEntity):
     estimatedPortfolioReturn: float = Field(0.0, description="Estimated portfolio return")
     avgDaysToDisclose: float = Field(0.0, description="Average disclosure delay")
     topHoldings: List[str] = Field(default_factory=list, description="Top stock holdings")
+    winRate: float = Field(0.0, description="Percentage of profitable trades")
+    recentTrades: List["CongressTrade"] = Field(default_factory=list, description="Recent trades")
 
 
 class CongressFilters(BaseModel):
@@ -103,3 +105,7 @@ class CongressMembersResponse(PaginatedResponse):
     """Response for congress members list."""
 
     members: List[CongressMember] = Field(default_factory=list)
+
+
+# Update forward references for Pydantic
+CongressMember.model_rebuild()

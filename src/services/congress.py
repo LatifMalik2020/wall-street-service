@@ -116,6 +116,22 @@ class CongressService:
         member = self.repo.get_member_by_id(member_id)
         if not member:
             raise NotFoundError("CongressMember", member_id)
+
+        # Fetch recent trades for this member
+        recent_trades = self.repo.get_trades_by_member(member_id, limit=50)
+
+        # Calculate win rate from trades with return data
+        trades_with_returns = [t for t in recent_trades if t.returnSinceTransaction is not None]
+        if trades_with_returns:
+            profitable_trades = [t for t in trades_with_returns if t.returnSinceTransaction > 0]
+            win_rate = (len(profitable_trades) / len(trades_with_returns)) * 100
+        else:
+            win_rate = 0.0
+
+        # Update member with trades and win rate
+        member.recentTrades = recent_trades
+        member.winRate = win_rate
+
         return member
 
     def get_member_trades(
