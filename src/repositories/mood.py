@@ -42,11 +42,14 @@ class MoodRepository(DynamoDBRepository):
             for ind in mood.indicators
         ]
 
+        # Handle sentiment - may be enum or already string due to use_enum_values=True
+        sentiment_str = mood.sentiment if isinstance(mood.sentiment, str) else mood.sentiment.value
+
         item = {
             "PK": self.PK_MOOD,
             "SK": self.SK_CURRENT if is_current else f"{self.SK_HISTORY_PREFIX}{mood.updatedAt.strftime('%Y-%m-%d')}",
             "fearGreedIndex": mood.fearGreedIndex,
-            "sentiment": mood.sentiment.value,
+            "sentiment": sentiment_str,
             "previousClose": mood.previousClose,
             "weekAgo": mood.weekAgo,
             "monthAgo": mood.monthAgo,
@@ -92,15 +95,22 @@ class MoodRepository(DynamoDBRepository):
         """Save user's mood prediction."""
         date_str = prediction.targetDate.strftime("%Y-%m-%d")
 
+        # Handle sentiment - may be enum or already string
+        predicted_sentiment = prediction.predictedSentiment if isinstance(prediction.predictedSentiment, str) else prediction.predictedSentiment.value
+        actual_sentiment = None
+        if prediction.actualSentiment:
+            actual_sentiment = prediction.actualSentiment if isinstance(prediction.actualSentiment, str) else prediction.actualSentiment.value
+
         item = {
             "PK": f"{self.PK_USER_PREFIX}{prediction.userId}",
             "SK": f"{self.SK_MOOD_PREDICTION_PREFIX}{date_str}",
+            "id": prediction.id,
             "userId": prediction.userId,
-            "predictedSentiment": prediction.predictedSentiment.value,
+            "predictedSentiment": predicted_sentiment,
             "predictedIndex": prediction.predictedIndex,
             "targetDate": prediction.targetDate.isoformat(),
             "createdAt": prediction.createdAt.isoformat(),
-            "actualSentiment": prediction.actualSentiment.value if prediction.actualSentiment else None,
+            "actualSentiment": actual_sentiment,
             "actualIndex": prediction.actualIndex,
             "isCorrect": prediction.isCorrect,
             "xpAwarded": prediction.xpAwarded,
@@ -127,13 +137,16 @@ class MoodRepository(DynamoDBRepository):
         is_correct = prediction.predictedSentiment == actual_mood.sentiment
         xp_awarded = 25 if is_correct else 0
 
+        # Handle sentiment - may be enum or already string
+        actual_sentiment_str = actual_mood.sentiment if isinstance(actual_mood.sentiment, str) else actual_mood.sentiment.value
+
         date_str = target_date.strftime("%Y-%m-%d")
         updated = self._update_item(
             pk=f"{self.PK_USER_PREFIX}{user_id}",
             sk=f"{self.SK_MOOD_PREDICTION_PREFIX}{date_str}",
             update_expression="SET actualSentiment = :as, actualIndex = :ai, isCorrect = :ic, xpAwarded = :xp",
             expression_values={
-                ":as": actual_mood.sentiment.value,
+                ":as": actual_sentiment_str,
                 ":ai": actual_mood.fearGreedIndex,
                 ":ic": is_correct,
                 ":xp": xp_awarded,
@@ -176,7 +189,10 @@ class MoodRepository(DynamoDBRepository):
 
     def _item_to_prediction(self, item: dict) -> MoodPrediction:
         """Convert DynamoDB item to MoodPrediction model."""
+        # Generate ID if not present (for legacy data)
+        prediction_id = item.get("id", f"{item.get('userId', '')[:8]}-{item.get('SK', '').replace('MOOD_PREDICTION#', '')}")
         return MoodPrediction(
+            id=prediction_id,
             userId=item.get("userId", ""),
             predictedSentiment=MoodSentiment(item.get("predictedSentiment", "NEUTRAL")),
             predictedIndex=item.get("predictedIndex"),

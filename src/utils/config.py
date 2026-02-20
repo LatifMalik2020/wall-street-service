@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # External APIs
     quiver_quant_api_key: Optional[str] = None
-    alpha_vantage_api_key: Optional[str] = None
+    polygon_api_key: Optional[str] = None
 
     # XP Configuration
     xp_mood_prediction_correct: int = 25

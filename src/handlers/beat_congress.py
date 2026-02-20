@@ -1,10 +1,25 @@
 """Beat Congress Game API handlers."""
 
+import json
 from typing import Optional
 
 from src.services.beat_congress import BeatCongressService
 from src.models.base import APIResponse
 from src.utils.logging import logger
+
+
+def _response(status_code: int, body: dict) -> dict:
+    """Format API response with JSON string body and CORS headers."""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        },
+        "body": json.dumps(body),
+    }
 
 
 def get_beat_congress_games(
@@ -26,13 +41,10 @@ def get_beat_congress_games(
         page_size=page_size,
     )
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_beat_congress_game_detail(user_id: str, game_id: str) -> dict:
@@ -44,13 +56,10 @@ def get_beat_congress_game_detail(user_id: str, game_id: str) -> dict:
 
     game = service.get_game_detail(user_id, game_id)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=game.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=game.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def create_beat_congress_game(
@@ -70,13 +79,10 @@ def create_beat_congress_game(
         duration_days=duration_days,
     )
 
-    return {
-        "statusCode": 201,
-        "body": APIResponse(
-            success=True,
-            data=game.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(201, APIResponse(
+        success=True,
+        data=game.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_beat_congress_leaderboard(
@@ -96,13 +102,10 @@ def get_beat_congress_leaderboard(
         page_size=page_size,
     )
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_challengeable_members(user_id: str, limit: int = 10) -> dict:
@@ -114,10 +117,7 @@ def get_challengeable_members(user_id: str, limit: int = 10) -> dict:
 
     members = service.get_challengeable_members(user_id, limit=limit)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data={"members": [m.model_dump(mode="json") for m in members]},
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data={"members": [m.model_dump(mode="json") for m in members]},
+    ).model_dump(mode="json"))

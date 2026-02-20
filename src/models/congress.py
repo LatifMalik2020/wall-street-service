@@ -64,6 +64,21 @@ class CongressTrade(BaseEntity):
         return f"${self.amountRangeLow} - ${self.amountRangeHigh}"
 
 
+class TopTradedCompany(BaseModel):
+    """A company frequently traded by a Congress member."""
+    ticker: str
+    companyName: str
+    tradeCount: int
+    totalVolume: float = 0.0
+
+
+class SectorBreakdown(BaseModel):
+    """Sector breakdown for a Congress member's trading."""
+    sector: str
+    tradeCount: int
+    percentage: float = 0.0
+
+
 class CongressMember(BaseEntity):
     """A congress member with trading history."""
 
@@ -75,10 +90,17 @@ class CongressMember(BaseEntity):
     district: Optional[str] = Field(None, description="District number (House only)")
     imageUrl: Optional[str] = Field(None, description="Profile image URL")
     totalTrades: int = Field(0, description="Total disclosed trades")
+    totalFilings: int = Field(0, description="Total disclosure filings")
     estimatedPortfolioReturn: float = Field(0.0, description="Estimated portfolio return")
     avgDaysToDisclose: float = Field(0.0, description="Average disclosure delay")
     topHoldings: List[str] = Field(default_factory=list, description="Top stock holdings")
     winRate: float = Field(0.0, description="Percentage of profitable trades")
+    tradingVolume: float = Field(0.0, description="Total estimated trading volume")
+    uniqueIssuers: int = Field(0, description="Number of unique tickers traded")
+    firstTradeDate: Optional[str] = Field(None, description="ISO date of first known trade")
+    lastTradeDate: Optional[str] = Field(None, description="ISO date of most recent trade")
+    topTradedCompanies: List[TopTradedCompany] = Field(default_factory=list, description="Top companies by trade count")
+    sectorBreakdown: List[SectorBreakdown] = Field(default_factory=list, description="Trading by sector")
     recentTrades: List["CongressTrade"] = Field(default_factory=list, description="Recent trades")
 
 

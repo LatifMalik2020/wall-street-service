@@ -62,6 +62,7 @@ class MarketMood(BaseEntity):
 class MoodPrediction(BaseEntity):
     """User's mood prediction."""
 
+    id: str = Field(default="", description="Prediction ID")
     userId: str = Field(..., description="User ID")
     predictedSentiment: MoodSentiment = Field(..., description="Predicted sentiment")
     predictedIndex: Optional[int] = Field(None, ge=0, le=100, description="Predicted index")

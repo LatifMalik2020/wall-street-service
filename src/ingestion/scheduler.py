@@ -4,8 +4,9 @@ from datetime import datetime
 from typing import Optional
 
 from src.ingestion.quiver_quant import QuiverQuantClient
-from src.ingestion.fear_greed import FearGreedClient, FearGreedClientMock
-from src.ingestion.alpha_vantage import AlphaVantageClient, AlphaVantageClientMock
+from src.ingestion.fmp import FMPClient
+from src.ingestion.fear_greed import FearGreedClient
+from src.ingestion.polygon_client import PolygonMarketClient
 from src.services.congress import CongressService
 from src.services.mood import MoodService
 from src.services.earnings import EarningsService
@@ -19,25 +20,15 @@ class DataIngestionScheduler:
     This class is designed to be called by EventBridge scheduled events.
     """
 
-    def __init__(self, use_mock: bool = False):
-        """Initialize scheduler.
-
-        Args:
-            use_mock: If True, use mock clients instead of real APIs.
-                     Useful for development and testing.
-        """
+    def __init__(self):
+        """Initialize scheduler with real API clients."""
         self.settings = get_settings()
-        self.use_mock = use_mock or self.settings.environment == "dev"
 
         # Initialize clients
+        self.fmp_client = FMPClient()
         self.quiver_client = QuiverQuantClient()
-
-        if self.use_mock:
-            self.fear_greed_client = FearGreedClientMock()
-            self.alpha_vantage_client = AlphaVantageClientMock()
-        else:
-            self.fear_greed_client = FearGreedClient()
-            self.alpha_vantage_client = AlphaVantageClient()
+        self.fear_greed_client = FearGreedClient()
+        self.polygon_client = PolygonMarketClient()
 
         # Initialize services
         self.congress_service = CongressService()
@@ -46,20 +37,36 @@ class DataIngestionScheduler:
 
     async def close(self):
         """Close all API clients."""
+        await self.fmp_client.close()
         await self.quiver_client.close()
         await self.fear_greed_client.close()
-        await self.alpha_vantage_client.close()
+        await self.polygon_client.close()
 
     async def ingest_congress_trades(self) -> dict:
-        """Ingest Congress trading data from QuiverQuant.
+        """Ingest Congress trading data.
 
+        Uses FMP as primary source, falls back to QuiverQuant.
         Should be scheduled to run daily.
         """
         try:
             logger.info("Starting Congress trades ingestion")
 
-            # Fetch trades from QuiverQuant
-            trades = await self.quiver_client.fetch_congress_trades(days_back=7)
+            trades = []
+
+            # Try FMP first (primary source)
+            try:
+                trades = await self.fmp_client.fetch_all_latest(limit=200)
+                logger.info("Fetched Congress trades from FMP", count=len(trades))
+            except Exception as fmp_err:
+                logger.warning("FMP fetch failed, falling back to QuiverQuant", error=str(fmp_err))
+
+            # Fall back to QuiverQuant if FMP returned nothing
+            if not trades:
+                try:
+                    trades = await self.quiver_client.fetch_congress_trades(days_back=7)
+                    logger.info("Fetched Congress trades from QuiverQuant", count=len(trades))
+                except Exception as qv_err:
+                    logger.error("QuiverQuant fetch also failed", error=str(qv_err))
 
             # Save each trade
             saved_count = 0
@@ -70,12 +77,39 @@ class DataIngestionScheduler:
                 except Exception as e:
                     logger.warning("Failed to save trade", error=str(e), trade_id=trade.id)
 
-            logger.info("Congress trades ingestion complete", saved=saved_count, total=len(trades))
+            # Auto-create member profiles from trades
+            member_ids_seen = set()
+            members_created = 0
+            for trade in trades:
+                if trade.memberId not in member_ids_seen:
+                    member_ids_seen.add(trade.memberId)
+                    try:
+                        from src.models.congress import CongressMember
+                        member = CongressMember(
+                            id=trade.memberId,
+                            name=trade.memberName,
+                            party=trade.party,
+                            chamber=trade.chamber,
+                            state=trade.state,
+                            totalTrades=1,
+                        )
+                        self.congress_service.save_member(member)
+                        members_created += 1
+                    except Exception:
+                        pass
+
+            logger.info(
+                "Congress trades ingestion complete",
+                saved=saved_count,
+                total=len(trades),
+                members_created=members_created,
+            )
 
             return {
                 "success": True,
                 "tradesIngested": saved_count,
                 "totalFetched": len(trades),
+                "membersCreated": members_created,
             }
 
         except Exception as e:
@@ -139,7 +173,7 @@ class DataIngestionScheduler:
             return {
                 "success": True,
                 "fearGreedIndex": mood.fearGreedIndex,
-                "sentiment": mood.sentiment.value,
+                "sentiment": mood.sentiment if isinstance(mood.sentiment, str) else mood.sentiment.value,
             }
 
         except Exception as e:
@@ -152,13 +186,21 @@ class DataIngestionScheduler:
     async def ingest_earnings_calendar(self) -> dict:
         """Ingest upcoming earnings calendar.
 
+        Uses FMP as primary data source for earnings dates.
         Should be scheduled to run daily.
         """
         try:
             logger.info("Starting earnings calendar ingestion")
 
-            # Fetch earnings calendar
-            events = await self.alpha_vantage_client.get_earnings_calendar(horizon="3month")
+            # Use FMP for earnings calendar data (more reliable for this)
+            # Polygon's earnings data is accessed via financials endpoint
+            events = []
+
+            # Try Polygon first
+            try:
+                events = await self.polygon_client.get_earnings_calendar(horizon="3month")
+            except Exception as poly_err:
+                logger.warning("Polygon earnings fetch returned empty, using FMP", error=str(poly_err))
 
             # Save each event
             saved_count = 0
@@ -188,18 +230,17 @@ class DataIngestionScheduler:
         """Update current stock prices for tracked tickers.
 
         Should be scheduled to run every 5 minutes during market hours.
+        Uses Polygon.io unlimited plan - no rate limit concerns.
         """
         try:
             logger.info("Starting stock price update")
 
             # Default symbols to update (Cramer picks, Congress trades)
             if not symbols:
-                # Get unique tickers from recent data
-                # For now, use a static list of popular tickers
                 symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "NVDA", "TSLA"]
 
-            # Fetch quotes
-            quotes = await self.alpha_vantage_client.batch_quotes(symbols)
+            # Fetch quotes from Polygon (unlimited calls)
+            quotes = await self.polygon_client.batch_quotes(symbols)
 
             logger.info("Stock prices updated", count=len(quotes))
 

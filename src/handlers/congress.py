@@ -1,10 +1,25 @@
 """Congress Trading API handlers."""
 
+import json
 from typing import Optional
 
 from src.services.congress import CongressService
 from src.models.base import APIResponse
 from src.utils.logging import logger
+
+
+def _response(status_code: int, body: dict) -> dict:
+    """Format API response with JSON string body and CORS headers."""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        },
+        "body": json.dumps(body),
+    }
 
 
 def get_congress_trades(
@@ -34,13 +49,10 @@ def get_congress_trades(
         days_back=days_back,
     )
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_congress_trade_detail(trade_id: str) -> dict:
@@ -52,13 +64,10 @@ def get_congress_trade_detail(trade_id: str) -> dict:
 
     trade = service.get_trade_detail(trade_id)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=trade.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=trade.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_congress_members(page: int = 1, page_size: int = 50) -> dict:
@@ -70,13 +79,10 @@ def get_congress_members(page: int = 1, page_size: int = 50) -> dict:
 
     response = service.get_members(page=page, page_size=page_size)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_congress_member_detail(member_id: str) -> dict:
@@ -88,13 +94,10 @@ def get_congress_member_detail(member_id: str) -> dict:
 
     member = service.get_member_detail(member_id)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=member.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=member.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_congress_member_trades(member_id: str, limit: int = 50) -> dict:
@@ -106,10 +109,7 @@ def get_congress_member_trades(member_id: str, limit: int = 50) -> dict:
 
     trades = service.get_member_trades(member_id, limit=limit)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data={"trades": [t.model_dump(mode="json") for t in trades]},
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data={"trades": [t.model_dump(mode="json") for t in trades]},
+    ).model_dump(mode="json"))

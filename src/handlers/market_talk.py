@@ -1,10 +1,25 @@
 """Market Talk AI Podcast API handlers."""
 
+import json
 from typing import Optional
 
 from src.services.market_talk import MarketTalkService
 from src.models.base import APIResponse
 from src.utils.logging import logger
+
+
+def _response(status_code: int, body: dict) -> dict:
+    """Format API response with JSON string body and CORS headers."""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        },
+        "body": json.dumps(body),
+    }
 
 
 def get_market_talk_episodes(page: int = 1, page_size: int = 20) -> dict:
@@ -16,13 +31,10 @@ def get_market_talk_episodes(page: int = 1, page_size: int = 20) -> dict:
 
     response = service.get_episodes(page=page, page_size=page_size)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_market_talk_episode_detail(episode_id: str) -> dict:
@@ -34,13 +46,10 @@ def get_market_talk_episode_detail(episode_id: str) -> dict:
 
     episode = service.get_episode_detail(episode_id)
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=episode.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=episode.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def get_market_talk_latest() -> dict:
@@ -52,13 +61,10 @@ def get_market_talk_latest() -> dict:
 
     response = service.get_latest()
 
-    return {
-        "statusCode": 200,
-        "body": APIResponse(
-            success=True,
-            data=response.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(200, APIResponse(
+        success=True,
+        data=response.model_dump(mode="json"),
+    ).model_dump(mode="json"))
 
 
 def generate_market_talk(
@@ -78,10 +84,7 @@ def generate_market_talk(
         message_count=message_count,
     )
 
-    return {
-        "statusCode": 201,
-        "body": APIResponse(
-            success=True,
-            data=episode.model_dump(mode="json"),
-        ).model_dump(mode="json"),
-    }
+    return _response(201, APIResponse(
+        success=True,
+        data=episode.model_dump(mode="json"),
+    ).model_dump(mode="json"))

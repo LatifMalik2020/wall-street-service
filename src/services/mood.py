@@ -1,5 +1,6 @@
 """Market Mood service."""
 
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -71,8 +72,10 @@ class MoodService:
         if existing:
             raise ConflictError("You already have a prediction for this period")
 
-        # Create prediction
+        # Create prediction with unique ID
+        prediction_id = f"{user_id[:8]}-{target_date.strftime('%Y%m%d')}-{str(uuid.uuid4())[:8]}"
         prediction = MoodPrediction(
+            id=prediction_id,
             userId=user_id,
             predictedSentiment=sentiment,
             predictedIndex=predicted_index,
