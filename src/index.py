@@ -14,6 +14,7 @@ from src.handlers import (
     get_congress_members,
     get_congress_member_detail,
     get_congress_member_trades,
+    backfill_member_trades,
     # Mood
     get_market_mood,
     submit_mood_prediction,
@@ -136,6 +137,9 @@ def _handle_http(event: dict) -> dict:
             page=int(query_params.get("page", 1)),
             page_size=int(query_params.get("pageSize", 50)),
         )
+
+    if path == "/wall-street/congress/admin/backfill" and http_method == "POST":
+        return backfill_member_trades()
 
     if path.startswith("/wall-street/congress/members/") and path.endswith("/trades"):
         member_id = path.split("/")[-2]

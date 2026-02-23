@@ -11,6 +11,7 @@ from src.handlers.congress import (
     get_congress_members,
     get_congress_member_detail,
     get_congress_member_trades,
+    backfill_member_trades,
 )
 from src.handlers.mood import (
     get_market_mood,
@@ -49,6 +50,7 @@ __all__ = [
     "get_congress_members",
     "get_congress_member_detail",
     "get_congress_member_trades",
+    "backfill_member_trades",
     # Mood
     "get_market_mood",
     "submit_mood_prediction",

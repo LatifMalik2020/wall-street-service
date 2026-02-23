@@ -77,26 +77,31 @@ class DataIngestionScheduler:
                 except Exception as e:
                     logger.warning("Failed to save trade", error=str(e), trade_id=trade.id)
 
-            # Auto-create member profiles from trades
-            member_ids_seen = set()
-            members_created = 0
+            # Auto-create member profiles from trades with accurate trade counts
+            member_trades_count: dict = {}
             for trade in trades:
-                if trade.memberId not in member_ids_seen:
-                    member_ids_seen.add(trade.memberId)
-                    try:
-                        from src.models.congress import CongressMember
-                        member = CongressMember(
-                            id=trade.memberId,
-                            name=trade.memberName,
-                            party=trade.party,
-                            chamber=trade.chamber,
-                            state=trade.state,
-                            totalTrades=1,
-                        )
-                        self.congress_service.save_member(member)
-                        members_created += 1
-                    except Exception:
-                        pass
+                mid = trade.memberId
+                if mid not in member_trades_count:
+                    member_trades_count[mid] = {"trade": trade, "count": 0}
+                member_trades_count[mid]["count"] += 1
+
+            members_created = 0
+            for mid, info in member_trades_count.items():
+                try:
+                    from src.models.congress import CongressMember
+                    t = info["trade"]
+                    member = CongressMember(
+                        id=t.memberId,
+                        name=t.memberName,
+                        party=t.party,
+                        chamber=t.chamber,
+                        state=t.state,
+                        totalTrades=info["count"],
+                    )
+                    self.congress_service.save_member(member)
+                    members_created += 1
+                except Exception:
+                    pass
 
             logger.info(
                 "Congress trades ingestion complete",
@@ -120,30 +125,48 @@ class DataIngestionScheduler:
             }
 
     async def ingest_congress_members(self) -> dict:
-        """Ingest Congress member profiles.
+        """Ingest Congress member profiles and their trades.
 
+        Fetches trade data to build member profiles AND saves individual
+        trades under member partition keys for efficient lookups.
         Should be scheduled to run weekly.
         """
         try:
             logger.info("Starting Congress members ingestion")
 
-            # Fetch members from QuiverQuant
-            members = await self.quiver_client.fetch_congress_members()
+            # Fetch trades from QuiverQuant (used to build member profiles)
+            trades = await self.quiver_client.fetch_congress_trades(days_back=365)
 
-            # Save each member
-            saved_count = 0
+            # Save individual trades (ensures member partition keys are populated)
+            trades_saved = 0
+            for trade in trades:
+                try:
+                    self.congress_service.save_trade(trade)
+                    trades_saved += 1
+                except Exception:
+                    pass  # Skip duplicates / errors
+
+            # Build and save member profiles from trades
+            members = await self.quiver_client.fetch_congress_members()
+            members_saved = 0
             for member in members:
                 try:
                     self.congress_service.save_member(member)
-                    saved_count += 1
+                    members_saved += 1
                 except Exception as e:
                     logger.warning("Failed to save member", error=str(e), member_id=member.id)
 
-            logger.info("Congress members ingestion complete", saved=saved_count, total=len(members))
+            logger.info(
+                "Congress members ingestion complete",
+                members_saved=members_saved,
+                trades_saved=trades_saved,
+                total_members=len(members),
+            )
 
             return {
                 "success": True,
-                "membersIngested": saved_count,
+                "membersIngested": members_saved,
+                "tradesIngested": trades_saved,
                 "totalFetched": len(members),
             }
 

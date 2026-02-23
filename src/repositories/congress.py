@@ -14,6 +14,7 @@ from src.models.congress import (
 )
 from src.repositories.base import DynamoDBRepository
 from src.utils.logging import logger
+from src.utils.normalize import normalize_member_id
 
 
 class CongressRepository(DynamoDBRepository):
@@ -72,14 +73,67 @@ class CongressRepository(DynamoDBRepository):
     def get_trades_by_member(
         self, member_id: str, limit: int = 50
     ) -> List[CongressTrade]:
-        """Get trades for a specific member."""
+        """Get trades for a specific member.
+
+        Tries the member-specific partition key first. If empty,
+        tries alternative ID formats (underscore vs hyphen) since
+        FMP and QuiverQuant historically used different formats.
+        """
+        # Primary lookup: normalized member ID
         items = self._query(
             pk=f"{self.PK_MEMBER_PREFIX}{member_id}",
             sk_begins_with=self.SK_TRADE_PREFIX,
             limit=limit,
             scan_index_forward=False,
         )
-        return [self._item_to_trade(item) for item in items]
+        if items:
+            return [self._item_to_trade(item) for item in items]
+
+        # Fallback: try alternative ID format (underscores <-> hyphens)
+        alt_id = member_id.replace("-", "_") if "-" in member_id else member_id.replace("_", "-")
+        if alt_id != member_id:
+            items = self._query(
+                pk=f"{self.PK_MEMBER_PREFIX}{alt_id}",
+                sk_begins_with=self.SK_TRADE_PREFIX,
+                limit=limit,
+                scan_index_forward=False,
+            )
+            if items:
+                logger.info(
+                    "Found trades under alternative member ID",
+                    original_id=member_id,
+                    alt_id=alt_id,
+                    count=len(items),
+                )
+                return [self._item_to_trade(item) for item in items]
+
+        return []
+
+    def get_trades_by_member_name(
+        self, member_name: str, limit: int = 200
+    ) -> List[CongressTrade]:
+        """Fallback: scan global trades and filter by member name.
+
+        Used when member-specific partition keys are empty (data migration gap).
+        More expensive than partition key lookup but ensures data is found.
+        """
+        items = self._query(
+            pk=self.PK_CONGRESS,
+            sk_begins_with=self.SK_TRADE_PREFIX,
+            limit=2000,  # Scan more to find member's trades
+            scan_index_forward=False,
+        )
+
+        name_lower = member_name.lower().strip()
+        trades = []
+        for item in items:
+            item_name = item.get("memberName", "").lower().strip()
+            if item_name == name_lower:
+                trades.append(self._item_to_trade(item))
+                if len(trades) >= limit:
+                    break
+
+        return trades
 
     def get_today_count(self) -> int:
         """Get count of trades disclosed today."""

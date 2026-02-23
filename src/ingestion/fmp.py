@@ -27,6 +27,7 @@ from src.models.congress import (
 from src.utils.config import get_settings
 from src.utils.logging import logger
 from src.utils.errors import ExternalAPIError
+from src.utils.normalize import normalize_member_id
 
 
 class FMPClient:
@@ -198,8 +199,8 @@ class FMPClient:
             ticker = item.get("symbol", "").upper()
             company_name = item.get("assetDescription", ticker)
 
-            # Generate member ID
-            member_id = full_name.lower().replace(" ", "-").replace(".", "")
+            # Generate member ID (normalized across all sources)
+            member_id = normalize_member_id(full_name)
 
             # Generate unique trade ID
             trade_id = (

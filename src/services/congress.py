@@ -140,8 +140,30 @@ class CongressService:
         if not member:
             raise NotFoundError("CongressMember", member_id)
 
-        # Fetch all trades for this member
+        # Fetch trades: try member partition key first, then fallback to global scan
         recent_trades = self.repo.get_trades_by_member(member_id, limit=200)
+
+        if not recent_trades:
+            # Fallback: scan global trades by member name
+            logger.info(
+                "No trades in member partition, falling back to name scan",
+                member_id=member_id,
+                member_name=member.name,
+            )
+            recent_trades = self.repo.get_trades_by_member_name(member.name, limit=200)
+
+            # If we found trades via fallback, backfill the member partition keys
+            if recent_trades:
+                logger.info(
+                    "Backfilling member partition keys from global scan",
+                    member_id=member_id,
+                    count=len(recent_trades),
+                )
+                for trade in recent_trades:
+                    try:
+                        self.repo.save_trade(trade)
+                    except Exception:
+                        pass  # Best-effort backfill
 
         if not recent_trades:
             member.recentTrades = []

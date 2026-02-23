@@ -15,6 +15,7 @@ from src.models.congress import (
 from src.utils.config import get_settings
 from src.utils.logging import logger
 from src.utils.errors import ExternalAPIError
+from src.utils.normalize import normalize_member_id
 
 
 class QuiverQuantClient:
@@ -187,11 +188,12 @@ class QuiverQuantClient:
             # Generate ID from data
             member_name = item.get("Representative", "Unknown")
             ticker = item.get("Ticker", "UNKNOWN")
-            trade_id = f"{disc_date.strftime('%Y%m%d')}_{member_name.replace(' ', '')}_{ticker}"
+            member_id = normalize_member_id(member_name)
+            trade_id = f"{disc_date.strftime('%Y%m%d')}_{member_id}_{ticker}"
 
             return CongressTrade(
                 id=trade_id,
-                memberId=member_name.lower().replace(" ", "_"),
+                memberId=member_id,
                 memberName=member_name,
                 party=party,
                 chamber=chamber,
