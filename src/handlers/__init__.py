@@ -48,6 +48,15 @@ from src.handlers.stocks import (
     get_market_status,
     get_stock_filings,
 )
+from src.handlers.super_investors import (
+    get_super_investors,
+    get_super_investor_trades,
+)
+from src.handlers.market_features import (
+    get_indices_comparison,
+    get_featured_etfs,
+    get_daily_buzz,
+)
 
 __all__ = [
     # Cramer
@@ -91,4 +100,11 @@ __all__ = [
     "get_ipos",
     "get_market_status",
     "get_stock_filings",
+    # Super Investors
+    "get_super_investors",
+    "get_super_investor_trades",
+    # Market Features
+    "get_indices_comparison",
+    "get_featured_etfs",
+    "get_daily_buzz",
 ]

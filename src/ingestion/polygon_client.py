@@ -595,3 +595,155 @@ class PolygonMarketClient:
 
     def sync_get_stock_detail(self, symbol: str) -> Dict[str, Any]:
         return self._run(self.get_stock_detail(symbol))
+
+    # ------------------------------------------------------------------
+    # Index aggregates
+    # ------------------------------------------------------------------
+
+    async def get_index_aggregates(
+        self,
+        ticker: str,
+        multiplier: int,
+        timespan: str,
+        from_date: str,
+        to_date: str,
+        adjusted: bool = True,
+        sort: str = "asc",
+        limit: int = 5000,
+    ) -> List[Dict]:
+        """Fetch aggregate (OHLCV) bars for a ticker over a date range.
+
+        Works for both equity tickers and index tickers (e.g. "I:SPX").
+
+        GET /v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from}/{to}
+            ?adjusted=true&sort=asc&limit={limit}
+        """
+        if not self.api_key:
+            logger.warning("Polygon API key not configured")
+            return []
+
+        try:
+            adjusted_param = "true" if adjusted else "false"
+            response = await self.client.get(
+                f"/v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from_date}/{to_date}",
+                params={
+                    "adjusted": adjusted_param,
+                    "sort": sort,
+                    "limit": limit,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("results", [])
+
+        except httpx.HTTPError as e:
+            logger.error(
+                "Polygon aggregates error",
+                ticker=ticker,
+                timespan=timespan,
+                error=str(e),
+            )
+            raise ExternalAPIError("Polygon", str(e))
+
+    def sync_get_index_aggregates(
+        self,
+        ticker: str,
+        multiplier: int,
+        timespan: str,
+        from_date: str,
+        to_date: str,
+        adjusted: bool = True,
+    ) -> List[Dict]:
+        return self._run(
+            self.get_index_aggregates(
+                ticker, multiplier, timespan, from_date, to_date, adjusted
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Bulk snapshot (ETFs / stocks)
+    # ------------------------------------------------------------------
+
+    async def get_bulk_snapshot(self, symbols: List[str]) -> List[Dict]:
+        """Fetch snapshots for a list of stock/ETF tickers in one request.
+
+        GET /v2/snapshot/locale/us/markets/stocks/tickers?tickers=SPY,QQQ,...
+
+        Returns list of ticker snapshot objects.
+        """
+        if not self.api_key:
+            logger.warning("Polygon API key not configured")
+            return []
+
+        if not symbols:
+            return []
+
+        try:
+            tickers_param = ",".join(s.upper() for s in symbols)
+            response = await self.client.get(
+                "/v2/snapshot/locale/us/markets/stocks/tickers",
+                params={
+                    "tickers": tickers_param,
+                    "include_otc": "false",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("tickers", [])
+
+        except httpx.HTTPError as e:
+            logger.error("Polygon bulk snapshot error", error=str(e))
+            raise ExternalAPIError("Polygon", str(e))
+
+    def sync_get_bulk_snapshot(self, symbols: List[str]) -> List[Dict]:
+        return self._run(self.get_bulk_snapshot(symbols))
+
+    # ------------------------------------------------------------------
+    # Market movers (gainers / losers)
+    # ------------------------------------------------------------------
+
+    async def get_market_movers(
+        self,
+        include_otc: bool = False,
+    ) -> tuple[List[Dict], List[Dict]]:
+        """Fetch top gainers and losers for US equity markets.
+
+        Runs both requests concurrently.
+
+        GET /v2/snapshot/locale/us/markets/stocks/gainers?include_otc=false
+        GET /v2/snapshot/locale/us/markets/stocks/losers?include_otc=false
+
+        Returns:
+            (gainers, losers) — each a list of Polygon ticker snapshot dicts.
+        """
+        if not self.api_key:
+            logger.warning("Polygon API key not configured")
+            return [], []
+
+        otc_param = "true" if include_otc else "false"
+
+        async def _fetch_movers(direction: str) -> List[Dict]:
+            try:
+                response = await self.client.get(
+                    f"/v2/snapshot/locale/us/markets/stocks/{direction}",
+                    params={"include_otc": otc_param},
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("tickers", [])
+            except httpx.HTTPError as e:
+                logger.error(
+                    "Polygon movers error", direction=direction, error=str(e)
+                )
+                return []
+
+        gainers, losers = await asyncio.gather(
+            _fetch_movers("gainers"),
+            _fetch_movers("losers"),
+        )
+        return gainers, losers
+
+    def sync_get_market_movers(
+        self, include_otc: bool = False
+    ) -> tuple[List[Dict], List[Dict]]:
+        return self._run(self.get_market_movers(include_otc))

@@ -45,6 +45,13 @@ from src.handlers import (
     get_ipos,
     get_market_status,
     get_stock_filings,
+    # Super Investors
+    get_super_investors,
+    get_super_investor_trades,
+    # Market Features
+    get_indices_comparison,
+    get_featured_etfs,
+    get_daily_buzz,
 )
 from src.events.listener import handle_event
 from src.utils.errors import WallStreetError
@@ -330,6 +337,47 @@ def _handle_http(event: dict) -> dict:
         # /wall-street/stocks/{symbol}  — detail (no trailing sub-resource)
         if len(parts) == 4:
             return get_stock_detail(symbol)
+
+    # ------------------------------------------------------------------
+    # Super Investor routes
+    # ------------------------------------------------------------------
+
+    # GET /wall-street/super-investors
+    if path == "/wall-street/super-investors" and http_method == "GET":
+        return get_super_investors()
+
+    # GET /wall-street/super-investors/{cik}/trades
+    if path.startswith("/wall-street/super-investors/") and path.endswith("/trades") and http_method == "GET":
+        # Extract CIK — it is the segment between /super-investors/ and /trades
+        cik = path_params.get("cik") or path.split("/")[-2]
+        return get_super_investor_trades(cik)
+
+    # ------------------------------------------------------------------
+    # Indices comparison route
+    # ------------------------------------------------------------------
+
+    # GET /wall-street/indices/comparison?symbols=SPX,NDX&period=1M
+    if path == "/wall-street/indices/comparison" and http_method == "GET":
+        return get_indices_comparison(
+            symbols_param=query_params.get("symbols"),
+            period=query_params.get("period", "1M"),
+        )
+
+    # ------------------------------------------------------------------
+    # ETFs route
+    # ------------------------------------------------------------------
+
+    # GET /wall-street/etfs/featured
+    if path == "/wall-street/etfs/featured" and http_method == "GET":
+        return get_featured_etfs()
+
+    # ------------------------------------------------------------------
+    # Daily Buzz route
+    # ------------------------------------------------------------------
+
+    # GET /wall-street/daily-buzz
+    if path == "/wall-street/daily-buzz" and http_method == "GET":
+        return get_daily_buzz()
 
     # Health check
     if path == "/wall-street/health" and http_method == "GET":
