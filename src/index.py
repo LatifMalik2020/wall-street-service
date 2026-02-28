@@ -36,6 +36,15 @@ from src.handlers import (
     get_market_talk_episode_detail,
     get_market_talk_latest,
     generate_market_talk,
+    # Stocks
+    get_stock_detail,
+    get_stock_ratios,
+    get_stock_financials,
+    get_stock_short_interest,
+    get_stock_technicals,
+    get_ipos,
+    get_market_status,
+    get_stock_filings,
 )
 from src.events.listener import handle_event
 from src.utils.errors import WallStreetError
@@ -265,6 +274,62 @@ def _handle_http(event: dict) -> dict:
             ticker=body.get("ticker"),
             message_count=body.get("messageCount", 4),
         )
+
+    # ------------------------------------------------------------------
+    # Stock routes
+    # ------------------------------------------------------------------
+
+    # GET /wall-street/ipos  (must come before the /stocks/ prefix check)
+    if path == "/wall-street/ipos" and http_method == "GET":
+        return get_ipos(
+            days_ahead=int(query_params.get("daysAhead", 30)),
+        )
+
+    # GET /wall-street/market-status
+    if path == "/wall-street/market-status" and http_method == "GET":
+        return get_market_status()
+
+    # Routes under /wall-street/stocks/{symbol}/...
+    if path.startswith("/wall-street/stocks/") and http_method == "GET":
+        # Extract symbol — it is always the segment right after /stocks/
+        parts = path.rstrip("/").split("/")
+        # parts: ['', 'wall-street', 'stocks', '<symbol>', '<sub-resource>?']
+        symbol = path_params.get("symbol") or (parts[3] if len(parts) > 3 else None)
+
+        if not symbol:
+            return _error_response(
+                400, {"code": "VALIDATION_ERROR", "message": "Missing symbol in path"}
+            )
+
+        # /wall-street/stocks/{symbol}/ratios
+        if path.endswith("/ratios"):
+            return get_stock_ratios(symbol)
+
+        # /wall-street/stocks/{symbol}/financials
+        if path.endswith("/financials"):
+            return get_stock_financials(
+                symbol,
+                timeframe=query_params.get("timeframe", "annual"),
+            )
+
+        # /wall-street/stocks/{symbol}/short-interest
+        if path.endswith("/short-interest"):
+            return get_stock_short_interest(symbol)
+
+        # /wall-street/stocks/{symbol}/technicals
+        if path.endswith("/technicals"):
+            return get_stock_technicals(symbol)
+
+        # /wall-street/stocks/{symbol}/filings
+        if path.endswith("/filings"):
+            return get_stock_filings(
+                symbol,
+                limit=int(query_params.get("limit", 10)),
+            )
+
+        # /wall-street/stocks/{symbol}  — detail (no trailing sub-resource)
+        if len(parts) == 4:
+            return get_stock_detail(symbol)
 
     # Health check
     if path == "/wall-street/health" and http_method == "GET":

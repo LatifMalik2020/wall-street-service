@@ -38,6 +38,16 @@ from src.handlers.market_talk import (
     get_market_talk_latest,
     generate_market_talk,
 )
+from src.handlers.stocks import (
+    get_stock_detail,
+    get_stock_ratios,
+    get_stock_financials,
+    get_stock_short_interest,
+    get_stock_technicals,
+    get_ipos,
+    get_market_status,
+    get_stock_filings,
+)
 
 __all__ = [
     # Cramer
@@ -72,4 +82,13 @@ __all__ = [
     "get_market_talk_episode_detail",
     "get_market_talk_latest",
     "generate_market_talk",
+    # Stocks
+    "get_stock_detail",
+    "get_stock_ratios",
+    "get_stock_financials",
+    "get_stock_short_interest",
+    "get_stock_technicals",
+    "get_ipos",
+    "get_market_status",
+    "get_stock_filings",
 ]
