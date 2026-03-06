@@ -122,37 +122,61 @@ class DynamoDBRepository:
         index_name: Optional[str] = None,
         scan_index_forward: bool = False,
     ) -> tuple[List[Dict[str, Any]], int]:
-        """Query with pagination support. Returns (items, total_count)."""
+        """Query with cursor-based pagination. Returns (items, total_count).
+
+        Uses ExclusiveStartKey to skip to the requested page instead of
+        fetching page_size*page items and slicing in Python — avoids
+        over-reading DynamoDB at higher page numbers.
+        """
         try:
-            # First get total count
             key_condition = Key("PK").eq(pk) if not index_name else Key("GSI1PK").eq(pk)
             if sk_begins_with:
                 sk_key = "SK" if not index_name else "GSI1SK"
                 key_condition = key_condition & Key(sk_key).begins_with(sk_begins_with)
 
-            kwargs = {
+            base_kwargs = {
                 "KeyConditionExpression": key_condition,
-                "Select": "COUNT",
+                "ScanIndexForward": scan_index_forward,
             }
             if index_name:
-                kwargs["IndexName"] = index_name
+                base_kwargs["IndexName"] = index_name
 
-            count_response = self._table.query(**kwargs)
-            total_count = count_response.get("Count", 0)
+            # Get total count (cheap — DynamoDB counts without returning items)
+            count_kwargs = {**base_kwargs, "Select": "COUNT"}
+            total_count = 0
+            while True:
+                count_response = self._table.query(**count_kwargs)
+                total_count += count_response.get("Count", 0)
+                if "LastEvaluatedKey" not in count_response:
+                    break
+                count_kwargs["ExclusiveStartKey"] = count_response["LastEvaluatedKey"]
 
-            # Then get page of items
-            kwargs["Select"] = "ALL_ATTRIBUTES"
-            kwargs["ScanIndexForward"] = scan_index_forward
-            kwargs["Limit"] = page_size * page  # Fetch enough for pagination
+            # Skip to the requested page using ExclusiveStartKey
+            query_kwargs = {**base_kwargs, "Select": "ALL_ATTRIBUTES", "Limit": page_size}
 
-            response = self._table.query(**kwargs)
-            items = response.get("Items", [])
+            # For pages beyond the first, advance the cursor
+            if page > 1:
+                skip_count = (page - 1) * page_size
+                skip_kwargs = {**base_kwargs, "Select": "ALL_ATTRIBUTES", "Limit": skip_count}
+                skip_resp = self._table.query(**skip_kwargs)
+                # Continue fetching if we haven't skipped enough items yet
+                items_skipped = len(skip_resp.get("Items", []))
+                last_key = skip_resp.get("LastEvaluatedKey")
+                while items_skipped < skip_count and last_key:
+                    remaining = skip_count - items_skipped
+                    skip_kwargs["Limit"] = remaining
+                    skip_kwargs["ExclusiveStartKey"] = last_key
+                    skip_resp = self._table.query(**skip_kwargs)
+                    items_skipped += len(skip_resp.get("Items", []))
+                    last_key = skip_resp.get("LastEvaluatedKey")
+                if last_key:
+                    query_kwargs["ExclusiveStartKey"] = last_key
+                else:
+                    # No more items after skipping — page is empty
+                    return [], total_count
 
-            # Apply offset for page
-            start_index = (page - 1) * page_size
-            page_items = items[start_index : start_index + page_size]
-
-            return page_items, total_count
+            response = self._table.query(**query_kwargs)
+            return response.get("Items", []), total_count
         except Exception as e:
             logger.error("DynamoDB query_paginated error", pk=pk, error=str(e))
             raise

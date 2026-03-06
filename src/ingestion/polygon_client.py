@@ -12,7 +12,7 @@ from src.utils.logging import logger
 from src.utils.errors import ExternalAPIError
 
 
-POLYGON_BASE_URL = "https://api.massive.com"
+POLYGON_BASE_URL = "https://api.polygon.io"
 
 
 class PolygonMarketClient:

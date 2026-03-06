@@ -75,7 +75,7 @@ class DataIngestionScheduler:
                     self.congress_service.save_trade(trade)
                     saved_count += 1
                 except Exception as e:
-                    logger.warning("Failed to save trade", error=str(e), trade_id=trade.id)
+                    logger.error(f"Failed to save trade: {e}", trade_id=getattr(trade, "id", None))
 
             # Auto-create member profiles from trades with accurate trade counts
             member_trades_count: dict = {}
@@ -100,8 +100,8 @@ class DataIngestionScheduler:
                     )
                     self.congress_service.save_member(member)
                     members_created += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Failed to save trade: {e}", member_id=mid)
 
             logger.info(
                 "Congress trades ingestion complete",
@@ -143,8 +143,8 @@ class DataIngestionScheduler:
                 try:
                     self.congress_service.save_trade(trade)
                     trades_saved += 1
-                except Exception:
-                    pass  # Skip duplicates / errors
+                except Exception as e:
+                    logger.error(f"Failed to save trade: {e}", trade_id=getattr(trade, "id", None))
 
             # Build and save member profiles from trades
             members = await self.quiver_client.fetch_congress_members()

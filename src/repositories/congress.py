@@ -75,39 +75,21 @@ class CongressRepository(DynamoDBRepository):
     ) -> List[CongressTrade]:
         """Get trades for a specific member.
 
-        Tries the member-specific partition key first. If empty,
-        tries alternative ID formats (underscore vs hyphen) since
-        FMP and QuiverQuant historically used different formats.
+        Normalizes the incoming member_id to the canonical hyphenated slug
+        format (e.g. "nancy-pelosi") before querying, so a single DynamoDB
+        request is always sufficient regardless of whether the caller supplied
+        underscores or hyphens.  All ingestion clients (FMP, QuiverQuant)
+        already write data under the normalized key via normalize_member_id(),
+        so the lookup will always match.
         """
-        # Primary lookup: normalized member ID
+        canonical_id = normalize_member_id(member_id)
         items = self._query(
-            pk=f"{self.PK_MEMBER_PREFIX}{member_id}",
+            pk=f"{self.PK_MEMBER_PREFIX}{canonical_id}",
             sk_begins_with=self.SK_TRADE_PREFIX,
             limit=limit,
             scan_index_forward=False,
         )
-        if items:
-            return [self._item_to_trade(item) for item in items]
-
-        # Fallback: try alternative ID format (underscores <-> hyphens)
-        alt_id = member_id.replace("-", "_") if "-" in member_id else member_id.replace("_", "-")
-        if alt_id != member_id:
-            items = self._query(
-                pk=f"{self.PK_MEMBER_PREFIX}{alt_id}",
-                sk_begins_with=self.SK_TRADE_PREFIX,
-                limit=limit,
-                scan_index_forward=False,
-            )
-            if items:
-                logger.info(
-                    "Found trades under alternative member ID",
-                    original_id=member_id,
-                    alt_id=alt_id,
-                    count=len(items),
-                )
-                return [self._item_to_trade(item) for item in items]
-
-        return []
+        return [self._item_to_trade(item) for item in items]
 
     def get_trades_by_member_name(
         self, member_name: str, limit: int = 200

@@ -381,7 +381,18 @@ def _handle_http(event: dict) -> dict:
 
     # Health check
     if path == "/wall-street/health" and http_method == "GET":
-        return _success_response(200, {"status": "healthy", "service": "wall-street"})
+        try:
+            import boto3
+            import os
+            dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+            table_name = os.environ.get("DYNAMODB_TABLE", "wall-street-data")
+            table = dynamodb.Table(table_name)
+            # Verify DynamoDB is accessible by reading table metadata
+            _ = table.table_status
+            return _success_response(200, {"status": "healthy", "service": "wall-street"})
+        except Exception as e:
+            logger.error("Health check failed", error=str(e))
+            return _error_response(503, {"code": "SERVICE_UNAVAILABLE", "status": "unhealthy", "error": "DynamoDB unreachable"})
 
     # Route not found
     return _error_response(
@@ -449,7 +460,7 @@ def _success_response(status_code: int, body: dict) -> dict:
         "statusCode": status_code,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": "https://tradestreak.net",
             "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Idempotency-Key",
             "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
         },
@@ -463,7 +474,7 @@ def _error_response(status_code: int, error: dict) -> dict:
         "statusCode": status_code,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": "https://tradestreak.net",
         },
         "body": json.dumps({"error": error}),
     }
