@@ -57,9 +57,10 @@ class MoodService:
         predicted_index: Optional[int] = None,
     ) -> MoodPredictionResult:
         """Submit a mood prediction for next week."""
-        # Parse sentiment
+        # Parse sentiment — normalize "Extreme Fear" → "EXTREME_FEAR"
         try:
-            sentiment = MoodSentiment(predicted_sentiment.upper())
+            normalized = predicted_sentiment.upper().replace(" ", "_")
+            sentiment = MoodSentiment(normalized)
         except ValueError:
             raise ValidationError(f"Invalid sentiment: {predicted_sentiment}", field="predictedSentiment")
 
