@@ -5,13 +5,6 @@ import os
 import logging
 from typing import Any
 
-# Validate required environment variables at cold start
-_REQUIRED_ENV_VARS = ["DYNAMODB_TABLE"]
-for _var in _REQUIRED_ENV_VARS:
-    if not os.environ.get(_var):
-        logging.critical(f"FATAL: Missing required environment variable: {_var}")
-        raise RuntimeError(f"Missing required env var: {_var}")
-
 from src.handlers import (
     # Cramer
     get_cramer_picks,
@@ -65,6 +58,13 @@ from src.handlers import (
 from src.events.listener import handle_event
 from src.utils.errors import WallStreetError
 from src.utils.logging import logger, set_request_context, clear_request_context
+
+# Validate required environment variables at cold start
+_REQUIRED_ENV_VARS = ["DYNAMODB_TABLE"]
+for _var in _REQUIRED_ENV_VARS:
+    if not os.environ.get(_var):
+        logging.critical(f"FATAL: Missing required environment variable: {_var}")
+        raise RuntimeError(f"Missing required env var: {_var}")
 
 
 def lambda_handler(event: dict, context: Any) -> dict:

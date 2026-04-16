@@ -1,6 +1,6 @@
 """Market Mood repository."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
 from decimal import Decimal
 

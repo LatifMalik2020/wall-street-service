@@ -1,7 +1,6 @@
 """EventBridge event listener for scheduled tasks."""
 
 import asyncio
-from typing import Any, Dict
 
 from src.ingestion.scheduler import DataIngestionScheduler
 from src.services.beat_congress import BeatCongressService

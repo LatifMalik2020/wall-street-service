@@ -2,7 +2,6 @@
 
 import httpx
 from datetime import datetime
-from typing import Optional
 
 from src.models.mood import MarketMood, MoodSentiment, MoodIndicator
 from src.utils.logging import logger

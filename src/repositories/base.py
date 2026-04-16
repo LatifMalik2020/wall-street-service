@@ -3,7 +3,7 @@
 import boto3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Key
 
 from src.utils.config import get_settings
 from src.utils.logging import logger

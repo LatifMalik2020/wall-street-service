@@ -1,6 +1,6 @@
 """Market Talk repository."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional, Tuple
 import uuid
 

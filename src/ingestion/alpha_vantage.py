@@ -1,9 +1,8 @@
 """Alpha Vantage API client for stock prices and earnings."""
 
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, List, Dict
-import uuid
 
 from src.models.earnings import EarningsEvent
 from src.utils.config import get_settings
@@ -155,7 +154,7 @@ class AlphaVantageClient:
                 symbol = parts[0].strip()
                 name = parts[1].strip()
                 report_date_str = parts[2].strip()
-                fiscal_date = parts[3].strip()
+                parts[3].strip()
                 estimate_str = parts[4].strip() if len(parts) > 4 else ""
 
                 # Parse date

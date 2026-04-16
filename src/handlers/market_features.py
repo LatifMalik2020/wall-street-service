@@ -198,8 +198,8 @@ def _generate_bedrock_summary(
             for g in gainers[:5]
         )
         loser_lines = "; ".join(
-            f"{l.get('symbol', '')} {l.get('changePercent', 0):.2f}%"
-            for l in losers[:5]
+            f"{loser.get('symbol', '')} {loser.get('changePercent', 0):.2f}%"
+            for loser in losers[:5]
         )
 
         index_lines = "; ".join(
@@ -307,7 +307,7 @@ def _format_mover(ticker_snapshot: dict) -> dict:
 
     symbol = ticker_snapshot.get("ticker", "")
     current_price = day.get("c") or ticker_snapshot.get("lastTrade", {}).get("p", 0)
-    previous_close = prev_day.get("c", 0)
+    prev_day.get("c", 0)
     change_pct = ticker_snapshot.get("todaysChangePerc", 0)
 
     return {

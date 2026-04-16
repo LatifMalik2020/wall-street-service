@@ -5,7 +5,6 @@ from typing import Optional
 
 from src.services.earnings import EarningsService
 from src.models.base import APIResponse
-from src.utils.logging import logger
 
 
 def _response(status_code: int, body: dict) -> dict:

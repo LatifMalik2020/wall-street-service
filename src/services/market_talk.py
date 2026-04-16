@@ -141,14 +141,14 @@ class MarketTalkService:
             f"I'm really liking what I see with {ticker or topic}. This is the setup!",
             f"Look, everyone's panicking about {topic}, but that's when you buy.",
             f"The fundamentals on {ticker or 'this sector'} are solid. I'm bullish here.",
-            f"This pullback is a gift. I'm adding to my position.",
+            "This pullback is a gift. I'm adding to my position.",
         ]
 
         sarah_templates = [
             f"Hold on, Mike. Let's look at the actual numbers on {ticker or topic}.",
             f"I need more data before I'd commit to {ticker or 'that'}. Let's see the receipts.",
-            f"The market's been wrong before. What's the downside here?",
-            f"I'm not saying sell, but the valuation looks stretched to me.",
+            "The market's been wrong before. What's the downside here?",
+            "I'm not saying sell, but the valuation looks stretched to me.",
         ]
 
         now = datetime.utcnow()

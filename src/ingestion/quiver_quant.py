@@ -3,7 +3,6 @@
 import httpx
 from datetime import datetime, timedelta
 from typing import List, Optional
-import uuid
 
 from src.models.congress import (
     CongressTrade,

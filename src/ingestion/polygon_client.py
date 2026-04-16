@@ -4,7 +4,6 @@ import asyncio
 import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, List, Dict
-import uuid
 
 from src.models.earnings import EarningsEvent
 from src.utils.config import get_settings
@@ -94,11 +93,11 @@ class PolygonMarketClient:
             # Calculate date range based on horizon
             now = datetime.now(timezone.utc)
             if horizon == "3month":
-                end_date = now + timedelta(days=90)
+                now + timedelta(days=90)
             elif horizon == "6month":
-                end_date = now + timedelta(days=180)
+                now + timedelta(days=180)
             else:
-                end_date = now + timedelta(days=365)
+                now + timedelta(days=365)
 
             # Use Polygon's stock financials endpoint for earnings dates
             # Note: Polygon doesn't have a direct "earnings calendar" like Alpha Vantage

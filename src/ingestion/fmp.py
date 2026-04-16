@@ -13,13 +13,11 @@ Docs: https://site.financialmodelingprep.com/developer/docs/stable
 """
 
 import httpx
-from datetime import datetime, timedelta
-from typing import List, Optional, Dict
-import uuid
+from datetime import datetime
+from typing import List, Optional
 
 from src.models.congress import (
     CongressTrade,
-    CongressMember,
     PoliticalParty,
     Chamber,
     TransactionType,

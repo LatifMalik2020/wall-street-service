@@ -5,7 +5,6 @@ from typing import Optional
 
 from src.services.cramer import CramerService
 from src.models.base import APIResponse
-from src.utils.logging import logger
 
 
 def _response(status_code: int, body: dict) -> dict:

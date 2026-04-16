@@ -7,7 +7,6 @@ from src.models.beat_congress import (
     BeatCongressStatus,
     BeatCongressGamesResponse,
     BeatCongressLeaderboardResponse,
-    BeatCongressLeaderboardEntry,
 )
 from src.models.congress import CongressMember
 from src.repositories.beat_congress import BeatCongressRepository
@@ -85,7 +84,7 @@ class BeatCongressService:
         # Check for existing active game with this member
         existing = self.repo.get_active_game_with_member(user_id, congress_member_id)
         if existing:
-            raise ConflictError(f"You already have an active game against this member")
+            raise ConflictError("You already have an active game against this member")
 
         # Get member info
         member = self.congress_repo.get_member_by_id(congress_member_id)

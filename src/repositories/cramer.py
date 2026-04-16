@@ -26,8 +26,8 @@ class CramerRepository(DynamoDBRepository):
     ) -> Tuple[List[CramerPick], int]:
         """Get paginated Cramer picks."""
         # Calculate date range
-        end_date = datetime.utcnow().strftime("%Y-%m-%d")
-        start_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+        datetime.utcnow().strftime("%Y-%m-%d")
+        (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
 
         # Query with date range
         items, total = self._query_paginated(

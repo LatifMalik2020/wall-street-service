@@ -1,6 +1,5 @@
 """Data ingestion scheduler for periodic updates."""
 
-from datetime import datetime
 from typing import Optional
 
 from src.ingestion.quiver_quant import QuiverQuantClient
