@@ -21,22 +21,55 @@ from src.utils.errors import NotFoundError
 
 # Simple ticker-to-sector mapping for common stocks
 TICKER_SECTORS = {
-    "AAPL": "Information Technology", "MSFT": "Information Technology", "GOOGL": "Communication Services",
-    "GOOG": "Communication Services", "AMZN": "Consumer Discretionary", "NVDA": "Information Technology",
-    "TSLA": "Consumer Discretionary", "META": "Communication Services", "JPM": "Financials",
-    "V": "Financials", "UNH": "Healthcare", "JNJ": "Healthcare", "XOM": "Energy",
-    "WMT": "Consumer Staples", "MA": "Financials", "PG": "Consumer Staples",
-    "HD": "Consumer Discretionary", "CVX": "Energy", "KO": "Consumer Staples",
-    "PEP": "Consumer Staples", "NFLX": "Communication Services", "DIS": "Communication Services",
-    "INTC": "Information Technology", "AMD": "Information Technology", "CRM": "Information Technology",
-    "ORCL": "Information Technology", "ADBE": "Information Technology", "PYPL": "Financials",
-    "PFE": "Healthcare", "MRK": "Healthcare", "ABBV": "Healthcare", "LLY": "Healthcare",
-    "TMO": "Healthcare", "ABT": "Healthcare", "BA": "Industrials", "CAT": "Industrials",
-    "GE": "Industrials", "RTX": "Industrials", "HON": "Industrials",
-    "T": "Communication Services", "VZ": "Communication Services",
-    "RBLX": "Communication Services", "SNAP": "Communication Services",
-    "SQ": "Financials", "GS": "Financials", "MS": "Financials",
-    "C": "Financials", "BAC": "Financials", "WFC": "Financials",
+    "AAPL": "Information Technology",
+    "MSFT": "Information Technology",
+    "GOOGL": "Communication Services",
+    "GOOG": "Communication Services",
+    "AMZN": "Consumer Discretionary",
+    "NVDA": "Information Technology",
+    "TSLA": "Consumer Discretionary",
+    "META": "Communication Services",
+    "JPM": "Financials",
+    "V": "Financials",
+    "UNH": "Healthcare",
+    "JNJ": "Healthcare",
+    "XOM": "Energy",
+    "WMT": "Consumer Staples",
+    "MA": "Financials",
+    "PG": "Consumer Staples",
+    "HD": "Consumer Discretionary",
+    "CVX": "Energy",
+    "KO": "Consumer Staples",
+    "PEP": "Consumer Staples",
+    "NFLX": "Communication Services",
+    "DIS": "Communication Services",
+    "INTC": "Information Technology",
+    "AMD": "Information Technology",
+    "CRM": "Information Technology",
+    "ORCL": "Information Technology",
+    "ADBE": "Information Technology",
+    "PYPL": "Financials",
+    "PFE": "Healthcare",
+    "MRK": "Healthcare",
+    "ABBV": "Healthcare",
+    "LLY": "Healthcare",
+    "TMO": "Healthcare",
+    "ABT": "Healthcare",
+    "BA": "Industrials",
+    "CAT": "Industrials",
+    "GE": "Industrials",
+    "RTX": "Industrials",
+    "HON": "Industrials",
+    "T": "Communication Services",
+    "VZ": "Communication Services",
+    "RBLX": "Communication Services",
+    "SNAP": "Communication Services",
+    "SQ": "Financials",
+    "GS": "Financials",
+    "MS": "Financials",
+    "C": "Financials",
+    "BAC": "Financials",
+    "WFC": "Financials",
 }
 
 
@@ -170,9 +203,13 @@ class CongressService:
             return member
 
         # Win rate from trades with return data
-        trades_with_returns = [t for t in recent_trades if t.returnSinceTransaction is not None]
+        trades_with_returns = [
+            t for t in recent_trades if t.returnSinceTransaction is not None
+        ]
         if trades_with_returns:
-            profitable = [t for t in trades_with_returns if t.returnSinceTransaction > 0]
+            profitable = [
+                t for t in trades_with_returns if t.returnSinceTransaction > 0
+            ]
             win_rate = (len(profitable) / len(trades_with_returns)) * 100
         else:
             win_rate = 0.0
@@ -243,16 +280,18 @@ class CongressService:
 
         return member
 
-    def get_member_trades(
-        self, member_id: str, limit: int = 50
-    ) -> List[CongressTrade]:
+    def get_member_trades(self, member_id: str, limit: int = 50) -> List[CongressTrade]:
         """Get trades for a specific member."""
         return self.repo.get_trades_by_member(member_id, limit=limit)
 
     def save_trade(self, trade: CongressTrade) -> CongressTrade:
         """Save a Congress trade (used by ingestion)."""
         self.repo.save_trade(trade)
-        logger.info("Saved Congress trade via service", member=trade.memberName, ticker=trade.ticker)
+        logger.info(
+            "Saved Congress trade via service",
+            member=trade.memberName,
+            ticker=trade.ticker,
+        )
         return trade
 
     def save_member(self, member: CongressMember) -> CongressMember:

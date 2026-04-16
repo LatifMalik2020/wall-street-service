@@ -10,7 +10,6 @@ from src.utils.config import get_settings
 from src.utils.logging import logger
 from src.utils.errors import ExternalAPIError
 
-
 POLYGON_BASE_URL = "https://api.polygon.io"
 
 
@@ -80,7 +79,9 @@ class PolygonMarketClient:
             logger.error("Polygon quote error", symbol=symbol, error=str(e))
             raise ExternalAPIError("Polygon", str(e))
 
-    async def get_earnings_calendar(self, horizon: str = "3month") -> List[EarningsEvent]:
+    async def get_earnings_calendar(
+        self, horizon: str = "3month"
+    ) -> List[EarningsEvent]:
         """Get upcoming earnings calendar from Polygon.
 
         Uses the /v3/reference/tickers/types and vX/reference/financials endpoints.
@@ -575,7 +576,9 @@ class PolygonMarketClient:
     ) -> List[Dict]:
         return self._run(self.get_ema(symbol, window, timespan, limit))
 
-    def sync_get_macd(self, symbol: str, timespan: str = "day", limit: int = 100) -> List[Dict]:
+    def sync_get_macd(
+        self, symbol: str, timespan: str = "day", limit: int = 100
+    ) -> List[Dict]:
         return self._run(self.get_macd(symbol, timespan=timespan, limit=limit))
 
     def sync_get_rsi(
@@ -731,9 +734,7 @@ class PolygonMarketClient:
                 data = response.json()
                 return data.get("tickers", [])
             except httpx.HTTPError as e:
-                logger.error(
-                    "Polygon movers error", direction=direction, error=str(e)
-                )
+                logger.error("Polygon movers error", direction=direction, error=str(e))
                 return []
 
         gainers, losers = await asyncio.gather(

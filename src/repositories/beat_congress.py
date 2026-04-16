@@ -143,8 +143,12 @@ class BeatCongressRepository(DynamoDBRepository):
         if not game:
             return None
 
-        user_return = ((user_value - game.userStartingValue) / game.userStartingValue) * 100
-        congress_return = ((congress_value - game.congressStartingValue) / game.congressStartingValue) * 100
+        user_return = (
+            (user_value - game.userStartingValue) / game.userStartingValue
+        ) * 100
+        congress_return = (
+            (congress_value - game.congressStartingValue) / game.congressStartingValue
+        ) * 100
 
         updated = self._update_item(
             pk=f"{self.PK_USER_PREFIX}{user_id}",
@@ -251,9 +255,7 @@ class BeatCongressRepository(DynamoDBRepository):
             currentStreak=int(item.get("currentStreak", 0)),
         )
 
-    def _update_leaderboard_stats(
-        self, user_id: str, won: bool, xp: int
-    ) -> None:
+    def _update_leaderboard_stats(self, user_id: str, won: bool, xp: int) -> None:
         """Update user's leaderboard stats after game completion."""
         entry = self.get_user_leaderboard_entry(user_id)
 
@@ -289,8 +291,12 @@ class BeatCongressRepository(DynamoDBRepository):
             congressMemberName=item.get("congressMemberName", ""),
             congressMemberParty=PoliticalParty(item.get("congressMemberParty", "D")),
             congressMemberChamber=Chamber(item.get("congressMemberChamber", "House")),
-            startDate=datetime.fromisoformat(item.get("startDate", datetime.utcnow().isoformat())),
-            endDate=datetime.fromisoformat(item.get("endDate", datetime.utcnow().isoformat())),
+            startDate=datetime.fromisoformat(
+                item.get("startDate", datetime.utcnow().isoformat())
+            ),
+            endDate=datetime.fromisoformat(
+                item.get("endDate", datetime.utcnow().isoformat())
+            ),
             durationDays=int(item.get("durationDays", 30)),
             status=BeatCongressStatus(item.get("status", "ACTIVE")),
             userStartingValue=float(item.get("userStartingValue", 10000)),

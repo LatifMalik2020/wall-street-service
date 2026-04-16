@@ -79,7 +79,9 @@ class BeatCongressService:
         """Create a new Beat Congress game."""
         # Validate duration
         if duration_days < 7 or duration_days > 90:
-            raise ValidationError("Duration must be between 7 and 90 days", field="durationDays")
+            raise ValidationError(
+                "Duration must be between 7 and 90 days", field="durationDays"
+            )
 
         # Check for existing active game with this member
         existing = self.repo.get_active_game_with_member(user_id, congress_member_id)
@@ -204,12 +206,16 @@ class BeatCongressService:
         logger.info("Processed expired Beat Congress games", count=processed_count)
         return processed_count
 
-    def get_challengeable_members(self, user_id: str, limit: int = 10) -> List[CongressMember]:
+    def get_challengeable_members(
+        self, user_id: str, limit: int = 10
+    ) -> List[CongressMember]:
         """Get Congress members the user can challenge."""
         members, _ = self.congress_repo.get_members(page=1, page_size=limit * 2)
 
         # Filter out members user already has active games with
-        active_games, _ = self.repo.get_user_games(user_id, status=BeatCongressStatus.ACTIVE)
+        active_games, _ = self.repo.get_user_games(
+            user_id, status=BeatCongressStatus.ACTIVE
+        )
         active_member_ids = {g.congressMemberId for g in active_games}
 
         available = [m for m in members if m.id not in active_member_ids]

@@ -38,9 +38,7 @@ class MarketTalkService:
             },
         }
 
-    def get_episodes(
-        self, page: int = 1, page_size: int = 20
-    ) -> MarketTalkResponse:
+    def get_episodes(self, page: int = 1, page_size: int = 20) -> MarketTalkResponse:
         """Get recent Market Talk episodes."""
         episodes, total = self.repo.get_episodes(page=page, page_size=page_size)
 
@@ -73,7 +71,9 @@ class MarketTalkService:
         if live_episode:
             return MarketTalkLatestResponse(
                 episode=live_episode,
-                latestMessages=live_episode.messages[-4:] if live_episode.messages else [],
+                latestMessages=(
+                    live_episode.messages[-4:] if live_episode.messages else []
+                ),
                 isLive=True,
             )
 
@@ -155,7 +155,9 @@ class MarketTalkService:
 
         for i in range(count):
             host = hosts[i % 2]
-            templates = mike_templates if host == MarketTalkHost.MIKE else sarah_templates
+            templates = (
+                mike_templates if host == MarketTalkHost.MIKE else sarah_templates
+            )
 
             messages.append(
                 MarketTalkMessage(
@@ -231,6 +233,8 @@ class MarketTalkService:
         logger.info("Ended live Market Talk episode", id=episode_id)
         return episode
 
-    def get_episodes_by_ticker(self, ticker: str, limit: int = 10) -> List[MarketTalkEpisode]:
+    def get_episodes_by_ticker(
+        self, ticker: str, limit: int = 10
+    ) -> List[MarketTalkEpisode]:
         """Get episodes that discuss a specific ticker."""
         return self.repo.get_episodes_by_topic(ticker.upper(), limit=limit)

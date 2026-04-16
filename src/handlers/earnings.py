@@ -40,10 +40,13 @@ def get_upcoming_earnings(
         page_size=page_size,
     )
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_earnings_event_detail(event_id: str) -> dict:
@@ -55,10 +58,13 @@ def get_earnings_event_detail(event_id: str) -> dict:
 
     event = service.get_event_detail(event_id)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=event.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=event.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def submit_earnings_prediction(
@@ -87,10 +93,13 @@ def submit_earnings_prediction(
         prediction_type=prediction,
     )
 
-    return _response(201, APIResponse(
-        success=True,
-        data=result.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        201,
+        APIResponse(
+            success=True,
+            data=result.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_user_earnings_predictions(user_id: str, limit: int = 50) -> dict:
@@ -102,10 +111,13 @@ def get_user_earnings_predictions(user_id: str, limit: int = 50) -> dict:
 
     predictions = service.get_user_predictions(user_id, limit=limit)
 
-    return _response(200, APIResponse(
-        success=True,
-        data={"predictions": [p.model_dump(mode="json") for p in predictions]},
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data={"predictions": [p.model_dump(mode="json") for p in predictions]},
+        ).model_dump(mode="json"),
+    )
 
 
 def get_user_earnings_stats(user_id: str) -> dict:
@@ -117,7 +129,10 @@ def get_user_earnings_stats(user_id: str) -> dict:
 
     stats = service.get_user_stats(user_id)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=stats.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=stats.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )

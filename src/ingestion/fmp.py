@@ -192,7 +192,9 @@ class FMPClient:
             amount_low, amount_high = self._parse_amount_range(amount_str)
 
             # Calculate days to disclose
-            days_to_disclose = (disc_date - tx_date).days if disc_date and tx_date else 0
+            days_to_disclose = (
+                (disc_date - tx_date).days if disc_date and tx_date else 0
+            )
 
             ticker = item.get("symbol", "").upper()
             company_name = item.get("assetDescription", ticker)

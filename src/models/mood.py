@@ -65,7 +65,9 @@ class MoodPrediction(BaseEntity):
     id: str = Field(default="", description="Prediction ID")
     userId: str = Field(..., description="User ID")
     predictedSentiment: MoodSentiment = Field(..., description="Predicted sentiment")
-    predictedIndex: Optional[int] = Field(None, ge=0, le=100, description="Predicted index")
+    predictedIndex: Optional[int] = Field(
+        None, ge=0, le=100, description="Predicted index"
+    )
     targetDate: datetime = Field(..., description="Date prediction is for")
     createdAt: datetime = Field(..., description="When prediction was made")
     actualSentiment: Optional[MoodSentiment] = Field(None, description="Actual result")

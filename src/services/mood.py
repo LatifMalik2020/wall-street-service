@@ -48,7 +48,9 @@ class MoodService:
     def save_mood(self, mood: MarketMood) -> MarketMood:
         """Save market mood (used by ingestion)."""
         self.repo.save_mood(mood, is_current=True)
-        logger.info("Saved market mood", index=mood.fearGreedIndex, sentiment=mood.sentiment)
+        logger.info(
+            "Saved market mood", index=mood.fearGreedIndex, sentiment=mood.sentiment
+        )
         return mood
 
     def submit_prediction(
@@ -63,11 +65,15 @@ class MoodService:
             normalized = predicted_sentiment.upper().replace(" ", "_")
             sentiment = MoodSentiment(normalized)
         except ValueError:
-            raise ValidationError(f"Invalid sentiment: {predicted_sentiment}", field="predictedSentiment")
+            raise ValidationError(
+                f"Invalid sentiment: {predicted_sentiment}", field="predictedSentiment"
+            )
 
         # Target date is 7 days from now
         target_date = datetime.utcnow() + timedelta(days=7)
-        target_date = target_date.replace(hour=16, minute=0, second=0, microsecond=0)  # Market close
+        target_date = target_date.replace(
+            hour=16, minute=0, second=0, microsecond=0
+        )  # Market close
 
         # Check for existing prediction
         existing = self.repo.get_user_prediction(user_id, target_date)
@@ -75,7 +81,9 @@ class MoodService:
             raise ConflictError("You already have a prediction for this period")
 
         # Create prediction with unique ID
-        prediction_id = f"{user_id[:8]}-{target_date.strftime('%Y%m%d')}-{str(uuid.uuid4())[:8]}"
+        prediction_id = (
+            f"{user_id[:8]}-{target_date.strftime('%Y%m%d')}-{str(uuid.uuid4())[:8]}"
+        )
         prediction = MoodPrediction(
             id=prediction_id,
             userId=user_id,
@@ -102,7 +110,9 @@ class MoodService:
         # Get actual mood for that date
         actual_mood = self.repo.get_historical_mood(target_date)
         if not actual_mood:
-            logger.warning("No mood data for date, skipping resolution", date=target_date)
+            logger.warning(
+                "No mood data for date, skipping resolution", date=target_date
+            )
             return 0
 
         # Get pending predictions

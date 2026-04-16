@@ -80,7 +80,9 @@ class EarningsService:
         try:
             pred_type = EarningsPredictionType(prediction_type.upper())
         except ValueError:
-            raise ValidationError(f"Invalid prediction type: {prediction_type}", field="prediction")
+            raise ValidationError(
+                f"Invalid prediction type: {prediction_type}", field="prediction"
+            )
 
         # Find the event
         event = self.repo.get_event_by_ticker(ticker.upper())
@@ -125,7 +127,9 @@ class EarningsService:
             eventStats=event_stats,
         )
 
-    def get_user_predictions(self, user_id: str, limit: int = 50) -> List[EarningsPrediction]:
+    def get_user_predictions(
+        self, user_id: str, limit: int = 50
+    ) -> List[EarningsPrediction]:
         """Get user's earnings predictions."""
         return self.repo.get_user_predictions(user_id, limit=limit)
 
@@ -136,7 +140,9 @@ class EarningsService:
     def save_event(self, event: EarningsEvent) -> EarningsEvent:
         """Save earnings event (used by ingestion)."""
         self.repo.save_event(event)
-        logger.info("Saved earnings event", ticker=event.ticker, date=event.earningsDate)
+        logger.info(
+            "Saved earnings event", ticker=event.ticker, date=event.earningsDate
+        )
         return event
 
     def update_event_results(
@@ -158,7 +164,9 @@ class EarningsService:
         for pred in predictions:
             is_correct = pred.prediction == result_type
             self.repo.resolve_prediction(pred.userId, event_id, is_correct)
-            self.repo.update_user_stats(pred.userId, is_correct, 50 if is_correct else 0)
+            self.repo.update_user_stats(
+                pred.userId, is_correct, 50 if is_correct else 0
+            )
 
             if is_correct:
                 logger.info(
@@ -168,7 +176,9 @@ class EarningsService:
                     predicted=pred.prediction,
                 )
 
-        logger.info("Resolved earnings predictions", event=event_id, count=len(predictions))
+        logger.info(
+            "Resolved earnings predictions", event=event_id, count=len(predictions)
+        )
         return event
 
     def _determine_result(self, event: EarningsEvent) -> EarningsPredictionType:

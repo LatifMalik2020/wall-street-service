@@ -22,14 +22,18 @@ class StockRatios(BaseEntity):
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     date: Optional[str] = Field(None, description="Date the ratios were calculated")
-    price: Optional[float] = Field(None, description="Stock price at ratio calculation date")
+    price: Optional[float] = Field(
+        None, description="Stock price at ratio calculation date"
+    )
     market_cap: Optional[float] = Field(None, description="Market capitalisation")
     enterprise_value: Optional[float] = Field(None, description="Enterprise value")
     earnings_per_share: Optional[float] = Field(None, description="Trailing EPS")
     price_to_earnings: Optional[float] = Field(None, description="P/E ratio")
     price_to_book: Optional[float] = Field(None, description="P/B ratio")
     price_to_sales: Optional[float] = Field(None, description="P/S ratio")
-    dividend_yield: Optional[float] = Field(None, description="Dividend yield as decimal")
+    dividend_yield: Optional[float] = Field(
+        None, description="Dividend yield as decimal"
+    )
     return_on_assets: Optional[float] = Field(None, description="ROA")
     return_on_equity: Optional[float] = Field(None, description="ROE")
     debt_to_equity: Optional[float] = Field(None, description="Debt-to-equity ratio")
@@ -58,7 +62,9 @@ class IncomeStatement(BaseEntity):
     net_income_loss: Optional[float] = Field(None, description="Net income or loss")
     earnings_per_share_basic: Optional[float] = Field(None, description="Basic EPS")
     earnings_per_share_diluted: Optional[float] = Field(None, description="Diluted EPS")
-    operating_expenses: Optional[float] = Field(None, description="Total operating expenses")
+    operating_expenses: Optional[float] = Field(
+        None, description="Total operating expenses"
+    )
     research_and_development: Optional[float] = Field(None, description="R&D expense")
     interest_expense: Optional[float] = Field(None, description="Interest expense")
     income_tax_expense: Optional[float] = Field(None, description="Income tax expense")
@@ -68,10 +74,18 @@ class ShortInterestData(BaseEntity):
     """Short interest record from Polygon /stocks/v1/short-interest."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
-    short_interest: Optional[float] = Field(None, description="Number of shares sold short")
-    avg_daily_volume: Optional[float] = Field(None, description="Average daily trading volume")
-    days_to_cover: Optional[float] = Field(None, description="Days to cover (short ratio)")
-    settlement_date: Optional[str] = Field(None, description="Settlement date of the report")
+    short_interest: Optional[float] = Field(
+        None, description="Number of shares sold short"
+    )
+    avg_daily_volume: Optional[float] = Field(
+        None, description="Average daily trading volume"
+    )
+    days_to_cover: Optional[float] = Field(
+        None, description="Days to cover (short ratio)"
+    )
+    settlement_date: Optional[str] = Field(
+        None, description="Settlement date of the report"
+    )
 
 
 class ShortVolumeData(BaseEntity):
@@ -81,16 +95,24 @@ class ShortVolumeData(BaseEntity):
     date: Optional[str] = Field(None, description="Trading date")
     short_volume: Optional[float] = Field(None, description="Short volume on the date")
     total_volume: Optional[float] = Field(None, description="Total volume on the date")
-    short_volume_ratio: Optional[float] = Field(None, description="Short volume / total volume")
+    short_volume_ratio: Optional[float] = Field(
+        None, description="Short volume / total volume"
+    )
 
 
 class FloatData(BaseEntity):
     """Float (free-float) data from Polygon /stocks/vX/float."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
-    effective_date: Optional[str] = Field(None, description="Date the float figure applies to")
-    free_float: Optional[float] = Field(None, description="Number of freely tradable shares")
-    free_float_percent: Optional[float] = Field(None, description="Free float as percent of shares outstanding")
+    effective_date: Optional[str] = Field(
+        None, description="Date the float figure applies to"
+    )
+    free_float: Optional[float] = Field(
+        None, description="Number of freely tradable shares"
+    )
+    free_float_percent: Optional[float] = Field(
+        None, description="Free float as percent of shares outstanding"
+    )
 
 
 class TechnicalIndicatorPoint(BaseEntity):
@@ -127,12 +149,22 @@ class IPOEvent(BaseEntity):
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     issuer_name: Optional[str] = Field(None, description="Company name")
     listing_date: Optional[str] = Field(None, description="Expected listing date")
-    ipo_status: Optional[str] = Field(None, description="IPO status (e.g. pending, priced)")
-    final_issue_price: Optional[float] = Field(None, description="Final issue price per share")
-    shares_outstanding: Optional[float] = Field(None, description="Total shares outstanding after IPO")
-    primary_exchange: Optional[str] = Field(None, description="Exchange where it will list")
+    ipo_status: Optional[str] = Field(
+        None, description="IPO status (e.g. pending, priced)"
+    )
+    final_issue_price: Optional[float] = Field(
+        None, description="Final issue price per share"
+    )
+    shares_outstanding: Optional[float] = Field(
+        None, description="Total shares outstanding after IPO"
+    )
+    primary_exchange: Optional[str] = Field(
+        None, description="Exchange where it will list"
+    )
     security_type: Optional[str] = Field(None, description="Security type")
-    total_offer_size: Optional[float] = Field(None, description="Total dollar value of the offering")
+    total_offer_size: Optional[float] = Field(
+        None, description="Total dollar value of the offering"
+    )
 
 
 class ExchangeStatus(BaseEntity):
@@ -146,8 +178,12 @@ class MarketStatus(BaseEntity):
     """Current market status from Polygon /v1/marketstatus/now."""
 
     market: Optional[str] = Field(None, description="Overall market status string")
-    afterHours: Optional[bool] = Field(None, description="Whether after-hours session is active")
-    earlyHours: Optional[bool] = Field(None, description="Whether pre-market session is active")
+    afterHours: Optional[bool] = Field(
+        None, description="Whether after-hours session is active"
+    )
+    earlyHours: Optional[bool] = Field(
+        None, description="Whether pre-market session is active"
+    )
     serverTime: Optional[str] = Field(None, description="Server timestamp")
     nasdaq: Optional[str] = Field(None, description="NASDAQ status")
     nyse: Optional[str] = Field(None, description="NYSE status")
@@ -161,16 +197,24 @@ class SECFiling(BaseEntity):
     cik: Optional[str] = Field(None, description="SEC CIK number")
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     issuer_name: Optional[str] = Field(None, description="Company name")
-    filing_date: Optional[str] = Field(None, description="Date the filing was submitted")
-    form_type: Optional[str] = Field(None, description="Form type (e.g. 10-K, 10-Q, 8-K)")
-    filing_url: Optional[str] = Field(None, description="URL to the filing on SEC EDGAR")
+    filing_date: Optional[str] = Field(
+        None, description="Date the filing was submitted"
+    )
+    form_type: Optional[str] = Field(
+        None, description="Form type (e.g. 10-K, 10-Q, 8-K)"
+    )
+    filing_url: Optional[str] = Field(
+        None, description="URL to the filing on SEC EDGAR"
+    )
 
 
 class StockDetail(BaseEntity):
     """Combined stock detail: snapshot + ratios + latest short interest."""
 
     symbol: str = Field(..., description="Ticker symbol")
-    snapshot: Optional[StockSnapshot] = Field(None, description="Real-time price snapshot")
+    snapshot: Optional[StockSnapshot] = Field(
+        None, description="Real-time price snapshot"
+    )
     ratios: Optional[StockRatios] = Field(None, description="Latest financial ratios")
     shortInterest: Optional[ShortInterestData] = Field(
         None, description="Most recent short interest report"

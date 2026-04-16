@@ -49,9 +49,13 @@ class CongressTrade(BaseEntity):
     disclosureDate: datetime = Field(..., description="Date disclosed")
     amountRangeLow: int = Field(..., description="Low end of amount range")
     amountRangeHigh: int = Field(..., description="High end of amount range")
-    priceAtTransaction: Optional[float] = Field(None, description="Price at transaction")
+    priceAtTransaction: Optional[float] = Field(
+        None, description="Price at transaction"
+    )
     currentPrice: Optional[float] = Field(None, description="Current price")
-    returnSinceTransaction: Optional[float] = Field(None, description="Return since trade")
+    returnSinceTransaction: Optional[float] = Field(
+        None, description="Return since trade"
+    )
     daysToDisclose: int = Field(..., description="Days between trade and disclosure")
 
     @property
@@ -66,6 +70,7 @@ class CongressTrade(BaseEntity):
 
 class TopTradedCompany(BaseModel):
     """A company frequently traded by a Congress member."""
+
     ticker: str
     companyName: str
     tradeCount: int
@@ -74,6 +79,7 @@ class TopTradedCompany(BaseModel):
 
 class SectorBreakdown(BaseModel):
     """Sector breakdown for a Congress member's trading."""
+
     sector: str
     tradeCount: int
     percentage: float = 0.0
@@ -91,17 +97,31 @@ class CongressMember(BaseEntity):
     imageUrl: Optional[str] = Field(None, description="Profile image URL")
     totalTrades: int = Field(0, description="Total disclosed trades")
     totalFilings: int = Field(0, description="Total disclosure filings")
-    estimatedPortfolioReturn: float = Field(0.0, description="Estimated portfolio return")
+    estimatedPortfolioReturn: float = Field(
+        0.0, description="Estimated portfolio return"
+    )
     avgDaysToDisclose: float = Field(0.0, description="Average disclosure delay")
-    topHoldings: List[str] = Field(default_factory=list, description="Top stock holdings")
+    topHoldings: List[str] = Field(
+        default_factory=list, description="Top stock holdings"
+    )
     winRate: float = Field(0.0, description="Percentage of profitable trades")
     tradingVolume: float = Field(0.0, description="Total estimated trading volume")
     uniqueIssuers: int = Field(0, description="Number of unique tickers traded")
-    firstTradeDate: Optional[str] = Field(None, description="ISO date of first known trade")
-    lastTradeDate: Optional[str] = Field(None, description="ISO date of most recent trade")
-    topTradedCompanies: List[TopTradedCompany] = Field(default_factory=list, description="Top companies by trade count")
-    sectorBreakdown: List[SectorBreakdown] = Field(default_factory=list, description="Trading by sector")
-    recentTrades: List["CongressTrade"] = Field(default_factory=list, description="Recent trades")
+    firstTradeDate: Optional[str] = Field(
+        None, description="ISO date of first known trade"
+    )
+    lastTradeDate: Optional[str] = Field(
+        None, description="ISO date of most recent trade"
+    )
+    topTradedCompanies: List[TopTradedCompany] = Field(
+        default_factory=list, description="Top companies by trade count"
+    )
+    sectorBreakdown: List[SectorBreakdown] = Field(
+        default_factory=list, description="Trading by sector"
+    )
+    recentTrades: List["CongressTrade"] = Field(
+        default_factory=list, description="Recent trades"
+    )
 
 
 class CongressFilters(BaseModel):
@@ -120,7 +140,9 @@ class CongressTradesResponse(PaginatedResponse):
 
     trades: List[CongressTrade] = Field(default_factory=list)
     todayCount: int = Field(0, description="Trades disclosed today")
-    topPerformer: Optional[CongressTrade] = Field(None, description="Best performing trade")
+    topPerformer: Optional[CongressTrade] = Field(
+        None, description="Best performing trade"
+    )
 
 
 class CongressMembersResponse(PaginatedResponse):

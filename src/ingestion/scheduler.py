@@ -57,13 +57,17 @@ class DataIngestionScheduler:
                 trades = await self.fmp_client.fetch_all_latest(limit=200)
                 logger.info("Fetched Congress trades from FMP", count=len(trades))
             except Exception as fmp_err:
-                logger.warning("FMP fetch failed, falling back to QuiverQuant", error=str(fmp_err))
+                logger.warning(
+                    "FMP fetch failed, falling back to QuiverQuant", error=str(fmp_err)
+                )
 
             # Fall back to QuiverQuant if FMP returned nothing
             if not trades:
                 try:
                     trades = await self.quiver_client.fetch_congress_trades(days_back=7)
-                    logger.info("Fetched Congress trades from QuiverQuant", count=len(trades))
+                    logger.info(
+                        "Fetched Congress trades from QuiverQuant", count=len(trades)
+                    )
                 except Exception as qv_err:
                     logger.error("QuiverQuant fetch also failed", error=str(qv_err))
 
@@ -74,7 +78,10 @@ class DataIngestionScheduler:
                     self.congress_service.save_trade(trade)
                     saved_count += 1
                 except Exception as e:
-                    logger.error(f"Failed to save trade: {e}", trade_id=getattr(trade, "id", None))
+                    logger.error(
+                        f"Failed to save trade: {e}",
+                        trade_id=getattr(trade, "id", None),
+                    )
 
             # Auto-create member profiles from trades with accurate trade counts
             member_trades_count: dict = {}
@@ -88,6 +95,7 @@ class DataIngestionScheduler:
             for mid, info in member_trades_count.items():
                 try:
                     from src.models.congress import CongressMember
+
                     t = info["trade"]
                     member = CongressMember(
                         id=t.memberId,
@@ -143,7 +151,10 @@ class DataIngestionScheduler:
                     self.congress_service.save_trade(trade)
                     trades_saved += 1
                 except Exception as e:
-                    logger.error(f"Failed to save trade: {e}", trade_id=getattr(trade, "id", None))
+                    logger.error(
+                        f"Failed to save trade: {e}",
+                        trade_id=getattr(trade, "id", None),
+                    )
 
             # Build and save member profiles from trades
             members = await self.quiver_client.fetch_congress_members()
@@ -153,7 +164,9 @@ class DataIngestionScheduler:
                     self.congress_service.save_member(member)
                     members_saved += 1
                 except Exception as e:
-                    logger.warning("Failed to save member", error=str(e), member_id=member.id)
+                    logger.warning(
+                        "Failed to save member", error=str(e), member_id=member.id
+                    )
 
             logger.info(
                 "Congress members ingestion complete",
@@ -195,7 +208,11 @@ class DataIngestionScheduler:
             return {
                 "success": True,
                 "fearGreedIndex": mood.fearGreedIndex,
-                "sentiment": mood.sentiment if isinstance(mood.sentiment, str) else mood.sentiment.value,
+                "sentiment": (
+                    mood.sentiment
+                    if isinstance(mood.sentiment, str)
+                    else mood.sentiment.value
+                ),
             }
 
         except Exception as e:
@@ -220,9 +237,14 @@ class DataIngestionScheduler:
 
             # Try Polygon first
             try:
-                events = await self.polygon_client.get_earnings_calendar(horizon="3month")
+                events = await self.polygon_client.get_earnings_calendar(
+                    horizon="3month"
+                )
             except Exception as poly_err:
-                logger.warning("Polygon earnings fetch returned empty, using FMP", error=str(poly_err))
+                logger.warning(
+                    "Polygon earnings fetch returned empty, using FMP",
+                    error=str(poly_err),
+                )
 
             # Save each event
             saved_count = 0
@@ -231,9 +253,15 @@ class DataIngestionScheduler:
                     self.earnings_service.save_event(event)
                     saved_count += 1
                 except Exception as e:
-                    logger.warning("Failed to save earnings event", error=str(e), event_id=event.id)
+                    logger.warning(
+                        "Failed to save earnings event", error=str(e), event_id=event.id
+                    )
 
-            logger.info("Earnings calendar ingestion complete", saved=saved_count, total=len(events))
+            logger.info(
+                "Earnings calendar ingestion complete",
+                saved=saved_count,
+                total=len(events),
+            )
 
             return {
                 "success": True,

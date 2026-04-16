@@ -27,7 +27,6 @@ from src.models.stocks import (
 from src.utils.errors import ExternalAPIError, NotFoundError, ValidationError
 from src.utils.logging import logger
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -214,7 +213,9 @@ def get_stock_detail(symbol: str) -> dict:
 
     return _response(
         200,
-        APIResponse(success=True, data=detail.model_dump(mode="json")).model_dump(mode="json"),
+        APIResponse(success=True, data=detail.model_dump(mode="json")).model_dump(
+            mode="json"
+        ),
     )
 
 
@@ -236,7 +237,9 @@ def get_stock_ratios(symbol: str) -> dict:
 
     return _response(
         200,
-        APIResponse(success=True, data=ratios.model_dump(mode="json")).model_dump(mode="json"),
+        APIResponse(success=True, data=ratios.model_dump(mode="json")).model_dump(
+            mode="json"
+        ),
     )
 
 
@@ -369,7 +372,9 @@ def get_stock_technicals(symbol: str) -> dict:
 
     return _response(
         200,
-        APIResponse(success=True, data=indicators.model_dump(mode="json")).model_dump(mode="json"),
+        APIResponse(success=True, data=indicators.model_dump(mode="json")).model_dump(
+            mode="json"
+        ),
     )
 
 
@@ -379,9 +384,7 @@ def get_ipos(days_ahead: int = 30) -> dict:
     GET /wall-street/ipos?daysAhead=30
     """
     if days_ahead < 0 or days_ahead > 365:
-        raise ValidationError(
-            "daysAhead must be between 0 and 365", field="daysAhead"
-        )
+        raise ValidationError("daysAhead must be between 0 and 365", field="daysAhead")
 
     logger.info("Fetching IPO calendar", days_ahead=days_ahead)
 
@@ -420,7 +423,9 @@ def get_market_status() -> dict:
 
     return _response(
         200,
-        APIResponse(success=True, data=status.model_dump(mode="json")).model_dump(mode="json"),
+        APIResponse(success=True, data=status.model_dump(mode="json")).model_dump(
+            mode="json"
+        ),
     )
 
 

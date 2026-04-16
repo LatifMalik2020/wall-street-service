@@ -98,12 +98,14 @@ class MarketTalkRepository(DynamoDBRepository):
 
         # If live, update current live pointer
         if episode.isLive:
-            self._put_item({
-                "PK": self.PK_MARKET_TALK,
-                "SK": self.SK_CURRENT,
-                "episodeId": episode.id,
-                "updatedAt": self._now_iso(),
-            })
+            self._put_item(
+                {
+                    "PK": self.PK_MARKET_TALK,
+                    "SK": self.SK_CURRENT,
+                    "episodeId": episode.id,
+                    "updatedAt": self._now_iso(),
+                }
+            )
 
         logger.info("Saved Market Talk episode", id=episode.id, topic=episode.topic)
 
@@ -181,7 +183,9 @@ class MarketTalkRepository(DynamoDBRepository):
                 MarketTalkMessage(
                     host=MarketTalkHost(msg_data.get("host", "MIKE")),
                     text=msg_data.get("text", ""),
-                    timestamp=datetime.fromisoformat(msg_data.get("timestamp", datetime.utcnow().isoformat())),
+                    timestamp=datetime.fromisoformat(
+                        msg_data.get("timestamp", datetime.utcnow().isoformat())
+                    ),
                     ticker=msg_data.get("ticker"),
                     sentiment=msg_data.get("sentiment"),
                 )
@@ -192,7 +196,9 @@ class MarketTalkRepository(DynamoDBRepository):
             title=item.get("title", ""),
             topic=item.get("topic", ""),
             messages=messages,
-            createdAt=datetime.fromisoformat(item.get("createdAt", datetime.utcnow().isoformat())),
+            createdAt=datetime.fromisoformat(
+                item.get("createdAt", datetime.utcnow().isoformat())
+            ),
             isLive=item.get("isLive", False),
             tickersMentioned=item.get("tickersMentioned", []),
             audioUrl=item.get("audioUrl"),

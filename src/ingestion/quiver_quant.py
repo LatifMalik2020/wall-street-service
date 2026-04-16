@@ -109,12 +109,12 @@ class QuiverQuantClient:
             members = []
             for member_id, data in members_dict.items():
                 trades_list = data["trades"]
-                avg_disclosure = sum(t.daysToDisclose for t in trades_list) / len(trades_list)
+                avg_disclosure = sum(t.daysToDisclose for t in trades_list) / len(
+                    trades_list
+                )
 
                 # Calculate estimated return (simplified)
-                total_return = sum(
-                    (t.returnSinceTransaction or 0) for t in trades_list
-                )
+                total_return = sum((t.returnSinceTransaction or 0) for t in trades_list)
                 avg_return = total_return / len(trades_list) if trades_list else 0
 
                 # Get top holdings
@@ -122,7 +122,9 @@ class QuiverQuantClient:
                 for t in trades_list:
                     if t.transactionType in [TransactionType.PURCHASE]:
                         ticker_counts[t.ticker] = ticker_counts.get(t.ticker, 0) + 1
-                top_holdings = sorted(ticker_counts.keys(), key=lambda x: ticker_counts[x], reverse=True)[:5]
+                top_holdings = sorted(
+                    ticker_counts.keys(), key=lambda x: ticker_counts[x], reverse=True
+                )[:5]
 
                 member = CongressMember(
                     id=member_id,
@@ -174,8 +176,13 @@ class QuiverQuantClient:
                 tx_type = TransactionType.PURCHASE
 
             # Parse dates
-            tx_date = datetime.strptime(item.get("TransactionDate", "2024-01-01"), "%Y-%m-%d")
-            disc_date = datetime.strptime(item.get("ReportDate", item.get("TransactionDate", "2024-01-01")), "%Y-%m-%d")
+            tx_date = datetime.strptime(
+                item.get("TransactionDate", "2024-01-01"), "%Y-%m-%d"
+            )
+            disc_date = datetime.strptime(
+                item.get("ReportDate", item.get("TransactionDate", "2024-01-01")),
+                "%Y-%m-%d",
+            )
 
             # Parse amount range
             amount_str = item.get("Range", "$1,001 - $15,000")

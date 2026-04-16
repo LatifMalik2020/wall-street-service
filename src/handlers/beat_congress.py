@@ -40,10 +40,13 @@ def get_beat_congress_games(
         page_size=page_size,
     )
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_beat_congress_game_detail(user_id: str, game_id: str) -> dict:
@@ -55,10 +58,13 @@ def get_beat_congress_game_detail(user_id: str, game_id: str) -> dict:
 
     game = service.get_game_detail(user_id, game_id)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=game.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=game.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def create_beat_congress_game(
@@ -78,10 +84,13 @@ def create_beat_congress_game(
         duration_days=duration_days,
     )
 
-    return _response(201, APIResponse(
-        success=True,
-        data=game.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        201,
+        APIResponse(
+            success=True,
+            data=game.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_beat_congress_leaderboard(
@@ -101,10 +110,13 @@ def get_beat_congress_leaderboard(
         page_size=page_size,
     )
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_challengeable_members(user_id: str, limit: int = 10) -> dict:
@@ -116,7 +128,10 @@ def get_challengeable_members(user_id: str, limit: int = 10) -> dict:
 
     members = service.get_challengeable_members(user_id, limit=limit)
 
-    return _response(200, APIResponse(
-        success=True,
-        data={"members": [m.model_dump(mode="json") for m in members]},
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data={"members": [m.model_dump(mode="json") for m in members]},
+        ).model_dump(mode="json"),
+    )

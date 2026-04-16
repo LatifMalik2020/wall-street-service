@@ -17,7 +17,6 @@ from src.models.base import APIResponse
 from src.utils.errors import ExternalAPIError, NotFoundError, ValidationError
 from src.utils.logging import logger
 
-
 # ---------------------------------------------------------------------------
 # Static catalog — metadata that doesn't change frequently
 # ---------------------------------------------------------------------------

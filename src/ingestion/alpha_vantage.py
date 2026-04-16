@@ -47,13 +47,18 @@ class AlphaVantageClient:
         now = datetime.utcnow()
 
         # Reset counter after 24 hours
-        if self._last_request_time and (now - self._last_request_time).total_seconds() > 86400:
+        if (
+            self._last_request_time
+            and (now - self._last_request_time).total_seconds() > 86400
+        ):
             self._request_count = 0
 
         # Check daily limit
         if self._request_count >= 25:
             logger.warning("Alpha Vantage daily rate limit reached")
-            raise ExternalAPIError("Alpha Vantage", "Daily rate limit exceeded (25 requests)")
+            raise ExternalAPIError(
+                "Alpha Vantage", "Daily rate limit exceeded (25 requests)"
+            )
 
         # Enforce 12 second delay between requests (5 per minute)
         if self._last_request_time:
@@ -93,7 +98,9 @@ class AlphaVantageClient:
                 "symbol": quote.get("01. symbol"),
                 "price": float(quote.get("05. price", 0)),
                 "change": float(quote.get("09. change", 0)),
-                "changePercent": float(quote.get("10. change percent", "0%").replace("%", "")),
+                "changePercent": float(
+                    quote.get("10. change percent", "0%").replace("%", "")
+                ),
                 "volume": int(quote.get("06. volume", 0)),
                 "latestTradingDay": quote.get("07. latest trading day"),
             }
@@ -102,7 +109,9 @@ class AlphaVantageClient:
             logger.error("Alpha Vantage quote error", symbol=symbol, error=str(e))
             raise ExternalAPIError("Alpha Vantage", str(e))
 
-    async def get_earnings_calendar(self, horizon: str = "3month") -> List[EarningsEvent]:
+    async def get_earnings_calendar(
+        self, horizon: str = "3month"
+    ) -> List[EarningsEvent]:
         """Get upcoming earnings calendar.
 
         Args:
@@ -204,5 +213,3 @@ class AlphaVantageClient:
                 continue
 
         return quotes
-
-

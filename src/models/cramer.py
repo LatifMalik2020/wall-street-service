@@ -49,8 +49,12 @@ class CramerStats(BaseModel):
     inverseWinRate: float = Field(0.0, description="Win rate doing opposite")
     avgFollowReturn: float = Field(0.0, description="Average return following")
     avgInverseReturn: float = Field(0.0, description="Average return inversing")
-    bestFollowPick: Optional[CramerPick] = Field(None, description="Best performing follow")
-    worstFollowPick: Optional[CramerPick] = Field(None, description="Worst performing follow")
+    bestFollowPick: Optional[CramerPick] = Field(
+        None, description="Best performing follow"
+    )
+    worstFollowPick: Optional[CramerPick] = Field(
+        None, description="Worst performing follow"
+    )
     periodDays: int = Field(30, description="Statistics period in days")
 
 

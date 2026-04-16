@@ -50,10 +50,13 @@ def get_congress_trades(
         days_back=days_back,
     )
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_congress_trade_detail(trade_id: str) -> dict:
@@ -65,10 +68,13 @@ def get_congress_trade_detail(trade_id: str) -> dict:
 
     trade = service.get_trade_detail(trade_id)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=trade.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=trade.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_congress_members(page: int = 1, page_size: int = 50) -> dict:
@@ -80,10 +86,13 @@ def get_congress_members(page: int = 1, page_size: int = 50) -> dict:
 
     response = service.get_members(page=page, page_size=page_size)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_congress_member_detail(member_id: str) -> dict:
@@ -95,10 +104,13 @@ def get_congress_member_detail(member_id: str) -> dict:
 
     member = service.get_member_detail(member_id)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=member.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=member.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_congress_member_trades(member_id: str, limit: int = 50) -> dict:
@@ -110,10 +122,13 @@ def get_congress_member_trades(member_id: str, limit: int = 50) -> dict:
 
     trades = service.get_member_trades(member_id, limit=limit)
 
-    return _response(200, APIResponse(
-        success=True,
-        data={"trades": [t.model_dump(mode="json") for t in trades]},
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data={"trades": [t.model_dump(mode="json") for t in trades]},
+        ).model_dump(mode="json"),
+    )
 
 
 def backfill_member_trades() -> dict:
@@ -166,11 +181,14 @@ def backfill_member_trades() -> dict:
         unique_members=len(members_seen),
     )
 
-    return _response(200, APIResponse(
-        success=True,
-        data={
-            "backfilled": backfilled,
-            "errors": errors,
-            "uniqueMembers": len(members_seen),
-        },
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data={
+                "backfilled": backfilled,
+                "errors": errors,
+                "uniqueMembers": len(members_seen),
+            },
+        ).model_dump(mode="json"),
+    )

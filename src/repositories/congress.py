@@ -52,7 +52,10 @@ class CongressRepository(DynamoDBRepository):
                     continue
                 if filters.chamber and trade.chamber != filters.chamber:
                     continue
-                if filters.transactionType and trade.transactionType != filters.transactionType:
+                if (
+                    filters.transactionType
+                    and trade.transactionType != filters.transactionType
+                ):
                     continue
                 if filters.ticker and trade.ticker.upper() != filters.ticker.upper():
                     continue
@@ -67,7 +70,9 @@ class CongressRepository(DynamoDBRepository):
 
     def get_trade_by_id(self, trade_id: str) -> Optional[CongressTrade]:
         """Get single trade by ID."""
-        item = self._get_item(pk=self.PK_CONGRESS, sk=f"{self.SK_TRADE_PREFIX}{trade_id}")
+        item = self._get_item(
+            pk=self.PK_CONGRESS, sk=f"{self.SK_TRADE_PREFIX}{trade_id}"
+        )
         return self._item_to_trade(item) if item else None
 
     def get_trades_by_member(
@@ -144,7 +149,10 @@ class CongressRepository(DynamoDBRepository):
             trade = self._item_to_trade(item)
             if trade.disclosureDate < cutoff:
                 continue
-            if trade.returnSinceTransaction and trade.returnSinceTransaction > best_return:
+            if (
+                trade.returnSinceTransaction
+                and trade.returnSinceTransaction > best_return
+            ):
                 best_return = trade.returnSinceTransaction
                 best_trade = trade
 
@@ -170,9 +178,19 @@ class CongressRepository(DynamoDBRepository):
             "disclosureDate": trade.disclosureDate.isoformat(),
             "amountRangeLow": trade.amountRangeLow,
             "amountRangeHigh": trade.amountRangeHigh,
-            "priceAtTransaction": Decimal(str(trade.priceAtTransaction)) if trade.priceAtTransaction else None,
-            "currentPrice": Decimal(str(trade.currentPrice)) if trade.currentPrice else None,
-            "returnSinceTransaction": Decimal(str(trade.returnSinceTransaction)) if trade.returnSinceTransaction else None,
+            "priceAtTransaction": (
+                Decimal(str(trade.priceAtTransaction))
+                if trade.priceAtTransaction
+                else None
+            ),
+            "currentPrice": (
+                Decimal(str(trade.currentPrice)) if trade.currentPrice else None
+            ),
+            "returnSinceTransaction": (
+                Decimal(str(trade.returnSinceTransaction))
+                if trade.returnSinceTransaction
+                else None
+            ),
             "daysToDisclose": trade.daysToDisclose,
             "createdAt": self._now_iso(),
             "updatedAt": self._now_iso(),
@@ -251,13 +269,27 @@ class CongressRepository(DynamoDBRepository):
             ticker=item.get("ticker", ""),
             companyName=item.get("companyName", ""),
             transactionType=TransactionType(item.get("transactionType", "Purchase")),
-            transactionDate=datetime.fromisoformat(item.get("transactionDate", "2024-01-01")),
-            disclosureDate=datetime.fromisoformat(item.get("disclosureDate", "2024-01-01")),
+            transactionDate=datetime.fromisoformat(
+                item.get("transactionDate", "2024-01-01")
+            ),
+            disclosureDate=datetime.fromisoformat(
+                item.get("disclosureDate", "2024-01-01")
+            ),
             amountRangeLow=int(item.get("amountRangeLow", 0)),
             amountRangeHigh=int(item.get("amountRangeHigh", 0)),
-            priceAtTransaction=float(item.get("priceAtTransaction")) if item.get("priceAtTransaction") else None,
-            currentPrice=float(item.get("currentPrice")) if item.get("currentPrice") else None,
-            returnSinceTransaction=float(item.get("returnSinceTransaction")) if item.get("returnSinceTransaction") else None,
+            priceAtTransaction=(
+                float(item.get("priceAtTransaction"))
+                if item.get("priceAtTransaction")
+                else None
+            ),
+            currentPrice=(
+                float(item.get("currentPrice")) if item.get("currentPrice") else None
+            ),
+            returnSinceTransaction=(
+                float(item.get("returnSinceTransaction"))
+                if item.get("returnSinceTransaction")
+                else None
+            ),
             daysToDisclose=int(item.get("daysToDisclose", 0)),
         )
 

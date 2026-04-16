@@ -356,7 +356,11 @@ def _handle_http(event: dict) -> dict:
         return get_super_investors()
 
     # GET /wall-street/super-investors/{cik}/trades
-    if path.startswith("/wall-street/super-investors/") and path.endswith("/trades") and http_method == "GET":
+    if (
+        path.startswith("/wall-street/super-investors/")
+        and path.endswith("/trades")
+        and http_method == "GET"
+    ):
         # Extract CIK — it is the segment between /super-investors/ and /trades
         cik = path_params.get("cik") or path.split("/")[-2]
         return get_super_investor_trades(cik)
@@ -393,15 +397,27 @@ def _handle_http(event: dict) -> dict:
         try:
             import boto3
             import os
-            dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+
+            dynamodb = boto3.resource(
+                "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
+            )
             table_name = os.environ.get("DYNAMODB_TABLE", "wall-street-data")
             table = dynamodb.Table(table_name)
             # Verify DynamoDB is accessible by reading table metadata
             _ = table.table_status
-            return _success_response(200, {"status": "healthy", "service": "wall-street"})
+            return _success_response(
+                200, {"status": "healthy", "service": "wall-street"}
+            )
         except Exception as e:
             logger.error("Health check failed", error=str(e))
-            return _error_response(503, {"code": "SERVICE_UNAVAILABLE", "status": "unhealthy", "error": "DynamoDB unreachable"})
+            return _error_response(
+                503,
+                {
+                    "code": "SERVICE_UNAVAILABLE",
+                    "status": "unhealthy",
+                    "error": "DynamoDB unreachable",
+                },
+            )
 
     # Route not found
     return _error_response(

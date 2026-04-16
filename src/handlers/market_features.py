@@ -22,7 +22,6 @@ from src.models.base import APIResponse
 from src.utils.errors import ExternalAPIError, ValidationError
 from src.utils.logging import logger
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -39,18 +38,34 @@ _INDEX_TICKER_MAP: dict[str, dict] = {
 _VALID_PERIODS = frozenset({"5D", "1M", "3M", "YTD", "1Y", "5Y"})
 
 _ETF_CATALOG: list[dict] = [
-    {"symbol": "SPY",  "name": "SPDR S&P 500 ETF Trust",          "category": "Large Cap"},
-    {"symbol": "QQQ",  "name": "Invesco QQQ Trust",               "category": "Technology"},
-    {"symbol": "DIA",  "name": "SPDR Dow Jones Industrial Avg",    "category": "Large Cap"},
-    {"symbol": "IWM",  "name": "iShares Russell 2000 ETF",         "category": "Small Cap"},
-    {"symbol": "VTI",  "name": "Vanguard Total Stock Market ETF",  "category": "Broad Market"},
-    {"symbol": "ARKK", "name": "ARK Innovation ETF",               "category": "Innovation"},
-    {"symbol": "XLF",  "name": "Financial Select Sector SPDR",     "category": "Financials"},
-    {"symbol": "XLK",  "name": "Technology Select Sector SPDR",    "category": "Technology"},
-    {"symbol": "GLD",  "name": "SPDR Gold Trust",                  "category": "Commodities"},
-    {"symbol": "TLT",  "name": "iShares 20+ Year Treasury Bond",   "category": "Fixed Income"},
-    {"symbol": "VNQ",  "name": "Vanguard Real Estate ETF",         "category": "Real Estate"},
-    {"symbol": "EEM",  "name": "iShares MSCI Emerging Markets",    "category": "International"},
+    {"symbol": "SPY", "name": "SPDR S&P 500 ETF Trust", "category": "Large Cap"},
+    {"symbol": "QQQ", "name": "Invesco QQQ Trust", "category": "Technology"},
+    {"symbol": "DIA", "name": "SPDR Dow Jones Industrial Avg", "category": "Large Cap"},
+    {"symbol": "IWM", "name": "iShares Russell 2000 ETF", "category": "Small Cap"},
+    {
+        "symbol": "VTI",
+        "name": "Vanguard Total Stock Market ETF",
+        "category": "Broad Market",
+    },
+    {"symbol": "ARKK", "name": "ARK Innovation ETF", "category": "Innovation"},
+    {"symbol": "XLF", "name": "Financial Select Sector SPDR", "category": "Financials"},
+    {
+        "symbol": "XLK",
+        "name": "Technology Select Sector SPDR",
+        "category": "Technology",
+    },
+    {"symbol": "GLD", "name": "SPDR Gold Trust", "category": "Commodities"},
+    {
+        "symbol": "TLT",
+        "name": "iShares 20+ Year Treasury Bond",
+        "category": "Fixed Income",
+    },
+    {"symbol": "VNQ", "name": "Vanguard Real Estate ETF", "category": "Real Estate"},
+    {
+        "symbol": "EEM",
+        "name": "iShares MSCI Emerging Markets",
+        "category": "International",
+    },
 ]
 
 _ETF_SPOTLIGHT_SYMBOL = "QQQ"
@@ -162,9 +177,7 @@ def _parse_symbols(symbols_param: Optional[str]) -> list[str]:
         raise ValidationError("At least one symbol is required", field="symbols")
 
     if len(raw_symbols) > 5:
-        raise ValidationError(
-            "Maximum 5 symbols allowed per request", field="symbols"
-        )
+        raise ValidationError("Maximum 5 symbols allowed per request", field="symbols")
 
     invalid = [s for s in raw_symbols if s not in _INDEX_TICKER_MAP]
     if invalid:
@@ -269,23 +282,17 @@ def _template_summary(
     top_gainer = gainers[0] if gainers else None
     top_loser = losers[0] if losers else None
 
-    parts: list[str] = [
-        f"U.S. equities traded {market_direction} on {today_str}."
-    ]
+    parts: list[str] = [f"U.S. equities traded {market_direction} on {today_str}."]
 
     if top_gainer:
         sym = top_gainer.get("symbol", "")
         pct = top_gainer.get("changePercent", 0)
-        parts.append(
-            f"{sym} led the session's gainers, advancing {pct:.2f}%."
-        )
+        parts.append(f"{sym} led the session's gainers, advancing {pct:.2f}%.")
 
     if top_loser:
         sym = top_loser.get("symbol", "")
         pct = abs(top_loser.get("changePercent", 0))
-        parts.append(
-            f"{sym} was among the notable decliners, falling {pct:.2f}%."
-        )
+        parts.append(f"{sym} was among the notable decliners, falling {pct:.2f}%.")
 
     return " ".join(parts)
 
@@ -406,8 +413,7 @@ def get_indices_comparison(
 
     # Normalise each series independently
     normalized: dict[str, list[float]] = {
-        sym: _normalize_series(all_bars.get(sym, []))
-        for sym in symbols
+        sym: _normalize_series(all_bars.get(sym, [])) for sym in symbols
     }
 
     data_points: list[dict] = []
@@ -476,7 +482,9 @@ def get_featured_etfs() -> dict:
                 "name": etf_meta["name"],
                 "category": etf_meta["category"],
                 "price": round(float(current_price), 2) if current_price else None,
-                "changePercent": round(float(change_pct), 4) if change_pct is not None else None,
+                "changePercent": (
+                    round(float(change_pct), 4) if change_pct is not None else None
+                ),
                 "volume": int(day.get("v", 0)),
             }
         )
@@ -567,7 +575,9 @@ def get_daily_buzz() -> dict:
 
     # Generate AI summary (falls back to template automatically)
     ai_summary = _generate_bedrock_summary(gainers, losers, index_summary)
-    summary_text = ai_summary if ai_summary else _template_summary(gainers, losers, index_summary)
+    summary_text = (
+        ai_summary if ai_summary else _template_summary(gainers, losers, index_summary)
+    )
     headline = _extract_headline(summary_text)
 
     # Headlines section — placeholder sourced from mover tickers

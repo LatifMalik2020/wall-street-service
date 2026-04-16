@@ -90,9 +90,13 @@ class CramerRepository(DynamoDBRepository):
             "GSI1SK": f"CRAMER#{pick.pickDate.strftime('%Y-%m-%d')}",
         }
         self._put_item(item)
-        logger.info("Saved Cramer pick", ticker=pick.ticker, recommendation=pick.recommendation)
+        logger.info(
+            "Saved Cramer pick", ticker=pick.ticker, recommendation=pick.recommendation
+        )
 
-    def update_pick_prices(self, pick_id: str, current_price: float) -> Optional[CramerPick]:
+    def update_pick_prices(
+        self, pick_id: str, current_price: float
+    ) -> Optional[CramerPick]:
         """Update current price and return for a pick."""
         # First get the pick to calculate returns
         item = self._get_item(pk=self.PK_CRAMER, sk=f"{self.SK_PICK_PREFIX}{pick_id}")
@@ -165,10 +169,18 @@ class CramerRepository(DynamoDBRepository):
 
         return CramerStats(
             totalPicks=total_picks,
-            followWinRate=round((follow_wins / total_picks) * 100, 1) if total_picks > 0 else 0,
-            inverseWinRate=round((inverse_wins / total_picks) * 100, 1) if total_picks > 0 else 0,
-            avgFollowReturn=round(total_follow_return / total_picks, 2) if total_picks > 0 else 0,
-            avgInverseReturn=round(total_inverse_return / total_picks, 2) if total_picks > 0 else 0,
+            followWinRate=(
+                round((follow_wins / total_picks) * 100, 1) if total_picks > 0 else 0
+            ),
+            inverseWinRate=(
+                round((inverse_wins / total_picks) * 100, 1) if total_picks > 0 else 0
+            ),
+            avgFollowReturn=(
+                round(total_follow_return / total_picks, 2) if total_picks > 0 else 0
+            ),
+            avgInverseReturn=(
+                round(total_inverse_return / total_picks, 2) if total_picks > 0 else 0
+            ),
             bestFollowPick=best_follow,
             worstFollowPick=worst_follow,
             periodDays=days_back,

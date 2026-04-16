@@ -32,16 +32,25 @@ def publish_xp_earned(user_id: str, xp_amount: int, source: str) -> None:
                 {
                     "Source": "tradestreak.wall-street",
                     "DetailType": "XP_EARNED",
-                    "Detail": json.dumps({
-                        "userId": user_id,
-                        "xpAmount": xp_amount,
-                        "source": source,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    }),
+                    "Detail": json.dumps(
+                        {
+                            "userId": user_id,
+                            "xpAmount": xp_amount,
+                            "source": source,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    ),
                     "EventBusName": bus_name,
                 }
             ]
         )
-        logger.info("Published XP_EARNED event", user=user_id, xp=xp_amount, source=source)
+        logger.info(
+            "Published XP_EARNED event", user=user_id, xp=xp_amount, source=source
+        )
     except Exception:
-        logger.exception("Failed to publish XP_EARNED event (non-fatal)", user=user_id, xp=xp_amount, source=source)
+        logger.exception(
+            "Failed to publish XP_EARNED event (non-fatal)",
+            user=user_id,
+            xp=xp_amount,
+            source=source,
+        )

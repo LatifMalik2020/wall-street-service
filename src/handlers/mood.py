@@ -30,10 +30,13 @@ def get_market_mood() -> dict:
 
     mood = service.get_current_mood()
 
-    return _response(200, APIResponse(
-        success=True,
-        data=mood.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=mood.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def submit_mood_prediction(
@@ -53,10 +56,13 @@ def submit_mood_prediction(
         predicted_index=predicted_index,
     )
 
-    return _response(201, APIResponse(
-        success=True,
-        data=result.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        201,
+        APIResponse(
+            success=True,
+            data=result.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_user_mood_predictions(user_id: str, limit: int = 30) -> dict:
@@ -68,7 +74,10 @@ def get_user_mood_predictions(user_id: str, limit: int = 30) -> dict:
 
     predictions = service.get_user_predictions(user_id, limit=limit)
 
-    return _response(200, APIResponse(
-        success=True,
-        data={"predictions": [p.model_dump(mode="json") for p in predictions]},
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data={"predictions": [p.model_dump(mode="json") for p in predictions]},
+        ).model_dump(mode="json"),
+    )

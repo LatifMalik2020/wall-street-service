@@ -30,10 +30,13 @@ def get_market_talk_episodes(page: int = 1, page_size: int = 20) -> dict:
 
     response = service.get_episodes(page=page, page_size=page_size)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_market_talk_episode_detail(episode_id: str) -> dict:
@@ -45,10 +48,13 @@ def get_market_talk_episode_detail(episode_id: str) -> dict:
 
     episode = service.get_episode_detail(episode_id)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=episode.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=episode.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_market_talk_latest() -> dict:
@@ -60,10 +66,13 @@ def get_market_talk_latest() -> dict:
 
     response = service.get_latest()
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def generate_market_talk(
@@ -83,7 +92,10 @@ def generate_market_talk(
         message_count=message_count,
     )
 
-    return _response(201, APIResponse(
-        success=True,
-        data=episode.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        201,
+        APIResponse(
+            success=True,
+            data=episode.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )

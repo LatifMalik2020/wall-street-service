@@ -152,12 +152,20 @@ class DynamoDBRepository:
                 count_kwargs["ExclusiveStartKey"] = count_response["LastEvaluatedKey"]
 
             # Skip to the requested page using ExclusiveStartKey
-            query_kwargs = {**base_kwargs, "Select": "ALL_ATTRIBUTES", "Limit": page_size}
+            query_kwargs = {
+                **base_kwargs,
+                "Select": "ALL_ATTRIBUTES",
+                "Limit": page_size,
+            }
 
             # For pages beyond the first, advance the cursor
             if page > 1:
                 skip_count = (page - 1) * page_size
-                skip_kwargs = {**base_kwargs, "Select": "ALL_ATTRIBUTES", "Limit": skip_count}
+                skip_kwargs = {
+                    **base_kwargs,
+                    "Select": "ALL_ATTRIBUTES",
+                    "Limit": skip_count,
+                }
                 skip_resp = self._table.query(**skip_kwargs)
                 # Continue fetching if we haven't skipped enough items yet
                 items_skipped = len(skip_resp.get("Items", []))

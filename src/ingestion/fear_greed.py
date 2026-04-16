@@ -63,9 +63,15 @@ class FearGreedClient:
         previous_close = int(fear_and_greed.get("previous_close", 50))
 
         # Historical comparisons
-        week_ago = int(data.get("fear_and_greed_historical", {}).get("one_week_ago", 50))
-        month_ago = int(data.get("fear_and_greed_historical", {}).get("one_month_ago", 50))
-        year_ago = int(data.get("fear_and_greed_historical", {}).get("one_year_ago", 50))
+        week_ago = int(
+            data.get("fear_and_greed_historical", {}).get("one_week_ago", 50)
+        )
+        month_ago = int(
+            data.get("fear_and_greed_historical", {}).get("one_month_ago", 50)
+        )
+        year_ago = int(
+            data.get("fear_and_greed_historical", {}).get("one_year_ago", 50)
+        )
 
         # Determine sentiment
         sentiment = MoodSentiment.from_index(current_score)
@@ -90,14 +96,38 @@ class FearGreedClient:
 
         # Map of CNN indicator names to our display names
         indicator_map = {
-            "market_momentum_sp500": ("Market Momentum (S&P 500)", "Comparing S&P 500 to its 125-day moving average"),
-            "market_momentum_sp125": ("Market Momentum (Breadth)", "Number of stocks hitting 52-week highs vs lows"),
-            "stock_price_strength": ("Stock Price Strength", "Stocks near 52-week highs vs lows"),
-            "stock_price_breadth": ("Stock Price Breadth", "Volume in advancing vs declining stocks"),
-            "put_call_options": ("Put/Call Ratio", "Put option trading vs call option trading"),
-            "market_volatility_vix": ("Market Volatility (VIX)", "CBOE Volatility Index"),
-            "safe_haven_demand": ("Safe Haven Demand", "Relative bond vs stock performance"),
-            "junk_bond_demand": ("Junk Bond Demand", "Spread between junk and investment-grade bonds"),
+            "market_momentum_sp500": (
+                "Market Momentum (S&P 500)",
+                "Comparing S&P 500 to its 125-day moving average",
+            ),
+            "market_momentum_sp125": (
+                "Market Momentum (Breadth)",
+                "Number of stocks hitting 52-week highs vs lows",
+            ),
+            "stock_price_strength": (
+                "Stock Price Strength",
+                "Stocks near 52-week highs vs lows",
+            ),
+            "stock_price_breadth": (
+                "Stock Price Breadth",
+                "Volume in advancing vs declining stocks",
+            ),
+            "put_call_options": (
+                "Put/Call Ratio",
+                "Put option trading vs call option trading",
+            ),
+            "market_volatility_vix": (
+                "Market Volatility (VIX)",
+                "CBOE Volatility Index",
+            ),
+            "safe_haven_demand": (
+                "Safe Haven Demand",
+                "Relative bond vs stock performance",
+            ),
+            "junk_bond_demand": (
+                "Junk Bond Demand",
+                "Spread between junk and investment-grade bonds",
+            ),
         }
 
         for key, (name, description) in indicator_map.items():
@@ -116,5 +146,3 @@ class FearGreedClient:
                 )
 
         return indicators
-
-

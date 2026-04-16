@@ -43,7 +43,9 @@ class MarketTalkResponse(PaginatedResponse):
     """Response for Market Talk episodes list."""
 
     episodes: List[MarketTalkEpisode] = Field(default_factory=list)
-    liveEpisode: Optional[MarketTalkEpisode] = Field(None, description="Current live episode")
+    liveEpisode: Optional[MarketTalkEpisode] = Field(
+        None, description="Current live episode"
+    )
 
 
 class MarketTalkLatestResponse(BaseModel):

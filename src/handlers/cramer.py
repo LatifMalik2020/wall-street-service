@@ -40,10 +40,13 @@ def get_cramer_picks(
         days_back=days_back,
     )
 
-    return _response(200, APIResponse(
-        success=True,
-        data=response.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=response.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_cramer_pick_detail(ticker: str) -> dict:
@@ -55,10 +58,13 @@ def get_cramer_pick_detail(ticker: str) -> dict:
 
     pick = service.get_pick_detail(ticker)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=pick.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=pick.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )
 
 
 def get_cramer_stats(days_back: int = 30) -> dict:
@@ -70,7 +76,10 @@ def get_cramer_stats(days_back: int = 30) -> dict:
 
     stats = service.get_stats(days_back=days_back)
 
-    return _response(200, APIResponse(
-        success=True,
-        data=stats.model_dump(mode="json"),
-    ).model_dump(mode="json"))
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data=stats.model_dump(mode="json"),
+        ).model_dump(mode="json"),
+    )

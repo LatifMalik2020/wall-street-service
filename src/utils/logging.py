@@ -47,7 +47,9 @@ structlog.configure(
         structlog.processors.JSONRenderer(),
     ],
     wrapper_class=structlog.make_filtering_bound_logger(
-        logging.DEBUG if os.getenv("LOG_LEVEL", "info").lower() == "debug" else logging.INFO
+        logging.DEBUG
+        if os.getenv("LOG_LEVEL", "info").lower() == "debug"
+        else logging.INFO
     ),
     context_class=dict,
     logger_factory=structlog.PrintLoggerFactory(),

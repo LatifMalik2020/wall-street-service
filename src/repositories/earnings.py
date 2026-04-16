@@ -51,7 +51,9 @@ class EarningsRepository(DynamoDBRepository):
 
     def get_event_by_id(self, event_id: str) -> Optional[EarningsEvent]:
         """Get single earnings event."""
-        item = self._get_item(pk=self.PK_EARNINGS, sk=f"{self.SK_EVENT_PREFIX}{event_id}")
+        item = self._get_item(
+            pk=self.PK_EARNINGS, sk=f"{self.SK_EVENT_PREFIX}{event_id}"
+        )
         return self._item_to_event(item) if item else None
 
     def get_event_by_ticker(self, ticker: str) -> Optional[EarningsEvent]:
@@ -81,10 +83,16 @@ class EarningsRepository(DynamoDBRepository):
             "companyName": event.companyName,
             "earningsDate": event.earningsDate.isoformat(),
             "earningsTime": event.earningsTime,
-            "estimatedEPS": Decimal(str(event.estimatedEPS)) if event.estimatedEPS else None,
+            "estimatedEPS": (
+                Decimal(str(event.estimatedEPS)) if event.estimatedEPS else None
+            ),
             "actualEPS": Decimal(str(event.actualEPS)) if event.actualEPS else None,
-            "estimatedRevenue": Decimal(str(event.estimatedRevenue)) if event.estimatedRevenue else None,
-            "actualRevenue": Decimal(str(event.actualRevenue)) if event.actualRevenue else None,
+            "estimatedRevenue": (
+                Decimal(str(event.estimatedRevenue)) if event.estimatedRevenue else None
+            ),
+            "actualRevenue": (
+                Decimal(str(event.actualRevenue)) if event.actualRevenue else None
+            ),
             "surprise": Decimal(str(event.surprise)) if event.surprise else None,
             "predictionsClosed": event.predictionsClosed,
             "totalPredictions": event.totalPredictions,
@@ -99,7 +107,9 @@ class EarningsRepository(DynamoDBRepository):
         }
         item = {k: v for k, v in item.items() if v is not None}
         self._put_item(item)
-        logger.info("Saved earnings event", ticker=event.ticker, date=event.earningsDate)
+        logger.info(
+            "Saved earnings event", ticker=event.ticker, date=event.earningsDate
+        )
 
     def update_event_results(
         self,
@@ -115,7 +125,9 @@ class EarningsRepository(DynamoDBRepository):
         # Calculate surprise
         surprise = None
         if event.estimatedEPS and event.estimatedEPS != 0:
-            surprise = ((actual_eps - event.estimatedEPS) / abs(event.estimatedEPS)) * 100
+            surprise = (
+                (actual_eps - event.estimatedEPS) / abs(event.estimatedEPS)
+            ) * 100
 
         update_expr = "SET actualEPS = :eps, surprise = :surp, predictionsClosed = :closed, updatedAt = :ua"
         expr_values = {
@@ -270,12 +282,22 @@ class EarningsRepository(DynamoDBRepository):
             id=item.get("id", ""),
             ticker=item.get("ticker", ""),
             companyName=item.get("companyName", ""),
-            earningsDate=datetime.fromisoformat(item.get("earningsDate", datetime.utcnow().isoformat())),
+            earningsDate=datetime.fromisoformat(
+                item.get("earningsDate", datetime.utcnow().isoformat())
+            ),
             earningsTime=item.get("earningsTime", "After"),
-            estimatedEPS=float(item["estimatedEPS"]) if item.get("estimatedEPS") else None,
+            estimatedEPS=(
+                float(item["estimatedEPS"]) if item.get("estimatedEPS") else None
+            ),
             actualEPS=float(item["actualEPS"]) if item.get("actualEPS") else None,
-            estimatedRevenue=float(item["estimatedRevenue"]) if item.get("estimatedRevenue") else None,
-            actualRevenue=float(item["actualRevenue"]) if item.get("actualRevenue") else None,
+            estimatedRevenue=(
+                float(item["estimatedRevenue"])
+                if item.get("estimatedRevenue")
+                else None
+            ),
+            actualRevenue=(
+                float(item["actualRevenue"]) if item.get("actualRevenue") else None
+            ),
             surprise=float(item["surprise"]) if item.get("surprise") else None,
             predictionsClosed=item.get("predictionsClosed", False),
             totalPredictions=int(item.get("totalPredictions", 0)),
@@ -291,7 +313,9 @@ class EarningsRepository(DynamoDBRepository):
             eventId=item.get("eventId", ""),
             ticker=item.get("ticker", ""),
             prediction=EarningsPredictionType(item.get("prediction", "MEET")),
-            createdAt=datetime.fromisoformat(item.get("createdAt", datetime.utcnow().isoformat())),
+            createdAt=datetime.fromisoformat(
+                item.get("createdAt", datetime.utcnow().isoformat())
+            ),
             isCorrect=item.get("isCorrect"),
             xpAwarded=int(item.get("xpAwarded", 0)),
         )
