@@ -14,7 +14,6 @@ from src.repositories.congress import CongressRepository
 from src.utils.logging import logger
 from src.utils.errors import NotFoundError, ValidationError, ConflictError
 from src.utils.config import get_settings
-from src.events.publisher import publish_xp_earned
 
 
 class BeatCongressService:
@@ -152,6 +151,8 @@ class BeatCongressService:
             user_return=game.userReturnPercent,
             congress_return=game.congressReturnPercent,
         )
+
+        from src.events.publisher import publish_xp_earned
 
         publish_xp_earned(
             user_id=game.userId,

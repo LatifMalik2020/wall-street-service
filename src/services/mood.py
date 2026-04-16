@@ -14,7 +14,6 @@ from src.repositories.mood import MoodRepository
 from src.utils.logging import logger
 from src.utils.errors import ValidationError, ConflictError
 from src.utils.config import get_settings
-from src.events.publisher import publish_xp_earned
 
 
 class MoodService:
@@ -124,6 +123,8 @@ class MoodService:
             resolved_count += 1
 
             if prediction.predictedSentiment == actual_mood.sentiment:
+                from src.events.publisher import publish_xp_earned
+
                 publish_xp_earned(
                     user_id=prediction.userId,
                     xp_amount=50,
