@@ -509,17 +509,44 @@ class PolygonMarketClient:
         """Combined call: snapshot + ratios + short interest for a stock detail page.
 
         Runs all three requests concurrently for latency efficiency.
+        Ratios and short-interest failures are non-fatal — we still return the
+        snapshot so the page can render price/chart data even when supplementary
+        data is unavailable for this symbol.
         """
         snapshot_task = self.get_quote(symbol)
         ratios_task = self.get_ratios(symbol)
         short_interest_task = self.get_short_interest(symbol, limit=1)
 
-        snapshot, ratios, short_interest_list = await asyncio.gather(
+        snapshot_result, ratios_result, short_interest_result = await asyncio.gather(
             snapshot_task,
             ratios_task,
             short_interest_task,
-            return_exceptions=False,
+            return_exceptions=True,
         )
+
+        # Snapshot is critical — if it failed, propagate the error
+        if isinstance(snapshot_result, Exception):
+            raise snapshot_result
+        snapshot = snapshot_result
+
+        # Ratios and short interest are optional — log and null them on failure
+        if isinstance(ratios_result, Exception):
+            import logging
+
+            logging.warning(f"get_ratios failed for {symbol}: {ratios_result}")
+            ratios = None
+        else:
+            ratios = ratios_result
+
+        if isinstance(short_interest_result, Exception):
+            import logging
+
+            logging.warning(
+                f"get_short_interest failed for {symbol}: {short_interest_result}"
+            )
+            short_interest_list = []
+        else:
+            short_interest_list = short_interest_result or []
 
         latest_short_interest = short_interest_list[0] if short_interest_list else None
 
