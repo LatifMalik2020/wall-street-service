@@ -1,7 +1,16 @@
 """Lambda entry point for Wall Street Service."""
 
 import json
+import os
+import logging
 from typing import Any
+
+# Validate required environment variables at cold start
+_REQUIRED_ENV_VARS = ["DYNAMODB_TABLE"]
+for _var in _REQUIRED_ENV_VARS:
+    if not os.environ.get(_var):
+        logging.critical(f"FATAL: Missing required environment variable: {_var}")
+        raise RuntimeError(f"Missing required env var: {_var}")
 
 from src.handlers import (
     # Cramer

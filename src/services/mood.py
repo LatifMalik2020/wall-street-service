@@ -14,6 +14,7 @@ from src.repositories.mood import MoodRepository
 from src.utils.logging import logger
 from src.utils.errors import ValidationError, ConflictError
 from src.utils.config import get_settings
+from src.events.publisher import publish_xp_earned
 
 
 class MoodService:
@@ -112,8 +113,12 @@ class MoodService:
             self.repo.resolve_prediction(prediction.userId, target_date, actual_mood)
             resolved_count += 1
 
-            # TODO: Emit event for XP grant if correct
             if prediction.predictedSentiment == actual_mood.sentiment:
+                publish_xp_earned(
+                    user_id=prediction.userId,
+                    xp_amount=50,
+                    source="mood_prediction",
+                )
                 logger.info(
                     "Correct mood prediction",
                     user=prediction.userId,

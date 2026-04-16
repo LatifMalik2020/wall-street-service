@@ -15,6 +15,7 @@ from src.repositories.congress import CongressRepository
 from src.utils.logging import logger
 from src.utils.errors import NotFoundError, ValidationError, ConflictError
 from src.utils.config import get_settings
+from src.events.publisher import publish_xp_earned
 
 
 class BeatCongressService:
@@ -151,7 +152,11 @@ class BeatCongressService:
             congress_return=game.congressReturnPercent,
         )
 
-        # TODO: Emit event for XP grant
+        publish_xp_earned(
+            user_id=game.userId,
+            xp_amount=25,
+            source="congress_prediction",
+        )
 
         return completed_game
 
