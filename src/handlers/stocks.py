@@ -282,14 +282,27 @@ def get_stock_short_interest(symbol: str) -> dict:
     """Return short interest and short volume history for a stock.
 
     GET /wall-street/stocks/{symbol}/short-interest
+
+    Polygon's short-interest / short-volume / float endpoints require a
+    paid plan; free-tier keys return 403. Swallow each per-endpoint
+    failure independently so the handler returns an empty section
+    rather than a 500 that blanks the whole StockDetail screen.
     """
     symbol = _validate_symbol(symbol)
     logger.info("Fetching short interest", symbol=symbol)
 
     client = PolygonMarketClient()
-    si_raw = client.sync_get_short_interest(symbol, limit=5)
-    sv_raw = client.sync_get_short_volume(symbol, limit=5)
-    float_raw = client.sync_get_float(symbol)
+
+    def _safe(fn, *a, **kw):
+        try:
+            return fn(*a, **kw)
+        except Exception as exc:
+            logger.warning(f"Polygon call failed for {symbol}: {exc}")
+            return None
+
+    si_raw = _safe(client.sync_get_short_interest, symbol, limit=5) or []
+    sv_raw = _safe(client.sync_get_short_volume, symbol, limit=5) or []
+    float_raw = _safe(client.sync_get_float, symbol)
 
     short_interest = [
         ShortInterestData(
