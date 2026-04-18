@@ -565,11 +565,22 @@ class PolygonMarketClient:
 
         Lambda handlers are synchronous; this bridge allows them to call
         the async httpx-based methods without restructuring the whole service.
-        A new event loop is created per call to avoid conflicts.
+
+        Prior behavior: a single httpx.AsyncClient was lazily cached on the
+        instance and reused across calls. Between invocations, the loop
+        that anchored the client's transport would be closed, so the next
+        call would explode with "RuntimeError: Event loop is closed" the
+        moment httpx tried to release a connection. Close the client in
+        the SAME loop we created for this call and null it out so the next
+        invocation starts fresh.
         """
         loop = asyncio.new_event_loop()
         try:
-            return loop.run_until_complete(coro)
+            result = loop.run_until_complete(coro)
+            if self._client is not None:
+                loop.run_until_complete(self._client.aclose())
+                self._client = None
+            return result
         finally:
             loop.close()
 

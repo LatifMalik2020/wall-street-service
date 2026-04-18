@@ -223,23 +223,28 @@ def get_stock_ratios(symbol: str) -> dict:
     """Return financial ratios for a stock.
 
     GET /wall-street/stocks/{symbol}/ratios
+
+    Polygon's /stocks/financials/v1/ratios requires a paid plan; free-tier
+    keys get 403. Swallow the upstream failure and return 200 with null
+    data so the StockDetail screen can render "no ratios available"
+    instead of blanking the whole view on a 502.
     """
     symbol = _validate_symbol(symbol)
     logger.info("Fetching stock ratios", symbol=symbol)
 
     client = PolygonMarketClient()
-    raw = client.sync_get_ratios(symbol)
+    try:
+        raw = client.sync_get_ratios(symbol)
+    except Exception as exc:
+        logger.warning("Polygon ratios fetch failed", symbol=symbol, error=str(exc))
+        raw = None
 
-    if raw is None:
-        raise NotFoundError("StockRatios", symbol)
-
-    ratios = _build_ratios(raw)
+    ratios = _build_ratios(raw) if raw else None
+    payload = ratios.model_dump(mode="json") if ratios else None
 
     return _response(
         200,
-        APIResponse(success=True, data=ratios.model_dump(mode="json")).model_dump(
-            mode="json"
-        ),
+        APIResponse(success=True, data=payload).model_dump(mode="json"),
     )
 
 
@@ -261,7 +266,13 @@ def get_stock_financials(symbol: str, timeframe: str = "annual") -> dict:
     logger.info("Fetching stock financials", symbol=symbol, timeframe=timeframe)
 
     client = PolygonMarketClient()
-    raw_list = client.sync_get_income_statements(symbol, timeframe=timeframe, limit=4)
+    # Polygon income statements are paid-plan; free-tier returns 403.
+    # Log and emit an empty list rather than bubbling up as a 502.
+    try:
+        raw_list = client.sync_get_income_statements(symbol, timeframe=timeframe, limit=4)
+    except Exception as exc:
+        logger.warning("Polygon financials fetch failed", symbol=symbol, error=str(exc))
+        raw_list = []
 
     statements = [_build_income_statement(r) for r in raw_list]
 
