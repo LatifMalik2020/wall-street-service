@@ -27,12 +27,16 @@ from src.utils.logging import logger
 # ---------------------------------------------------------------------------
 
 # Polygon uses "I:" prefix for index tickers
+# Index data via ETF PROXIES (SPY/QQQ/DIA/...) rather than raw index tickers (I:SPX).
+# The Polygon "Stocks Starter" plan covers stocks/ETFs but NOT the Indices add-on
+# (I:SPX 403s). An ETF's % change tracks its index almost exactly, which is what the
+# home chips display. (currentValue is the ETF price; the chips show % only.)
 _INDEX_TICKER_MAP: dict[str, dict] = {
-    "SPX": {"polygonTicker": "I:SPX", "name": "S&P 500"},
-    "NDX": {"polygonTicker": "I:NDX", "name": "Nasdaq-100"},
-    "DJI": {"polygonTicker": "I:DJI", "name": "Dow Jones Industrial Average"},
-    "RUT": {"polygonTicker": "I:RUT", "name": "Russell 2000"},
-    "VIX": {"polygonTicker": "I:VIX", "name": "CBOE Volatility Index"},
+    "SPX": {"polygonTicker": "SPY", "name": "S&P 500"},
+    "NDX": {"polygonTicker": "QQQ", "name": "Nasdaq-100"},
+    "DJI": {"polygonTicker": "DIA", "name": "Dow Jones Industrial Average"},
+    "RUT": {"polygonTicker": "IWM", "name": "Russell 2000"},
+    "VIX": {"polygonTicker": "VIXY", "name": "CBOE Volatility Index"},
 }
 
 _VALID_PERIODS = frozenset({"5D", "1M", "3M", "YTD", "1Y", "5Y"})
