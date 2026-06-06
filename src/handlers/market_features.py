@@ -332,6 +332,56 @@ def _format_mover(ticker_snapshot: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
+# Curated universe of popular, liquid names so the home "movers" reads like
+# Robinhood's (recognizable tickers) instead of $0.40 penny stocks up 100%.
+_POPULAR_TICKERS = [
+    "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "AMD", "NFLX",
+    "DIS", "BA", "JPM", "BAC", "WMT", "KO", "XOM", "INTC", "CRM", "ORCL",
+    "ADBE", "PYPL", "UBER", "COIN", "PLTR", "SHOP", "SOFI", "RIVN", "F",
+    "GM", "T", "PFE", "NKE", "SBUX", "MCD", "COST", "HD", "QQQ", "SPY",
+    "AVGO", "MU", "MARA", "RIOT", "ABNB", "SNAP", "DKNG",
+]
+
+
+def get_movers() -> dict:
+    """Robinhood-style top movers for the home screen.
+
+    Computes today's biggest gainers/losers WITHIN a curated universe of popular,
+    liquid stocks (one bulk Polygon snapshot — NO Bedrock), so the feed surfaces
+    recognizable names rather than the market-wide penny-stock pumps that a raw
+    "top gainers" query returns.
+    """
+    client = PolygonMarketClient()
+    snaps: list[dict] = []
+    try:
+        snaps = client.sync_get_bulk_snapshot(_POPULAR_TICKERS)
+    except Exception as exc:  # noqa: BLE001 - degrade gracefully
+        logger.warning("Movers bulk snapshot failed", error=str(exc))
+
+    movers = [_format_mover(s) for s in snaps]
+    movers = [m for m in movers if m.get("price")]
+    gainers = sorted(
+        [m for m in movers if m["changePercent"] > 0],
+        key=lambda m: m["changePercent"], reverse=True,
+    )[:6]
+    losers = sorted(
+        [m for m in movers if m["changePercent"] < 0],
+        key=lambda m: m["changePercent"],
+    )[:6]
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return _response(
+        200,
+        APIResponse(
+            success=True,
+            data={
+                "gainers": gainers,
+                "losers": losers,
+                "generatedAt": generated_at,
+            },
+        ).model_dump(mode="json"),
+    )
+
+
 def get_indices_comparison(
     symbols_param: Optional[str] = None,
     period: str = "1M",

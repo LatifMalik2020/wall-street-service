@@ -54,6 +54,7 @@ from src.handlers import (
     get_indices_comparison,
     get_featured_etfs,
     get_daily_buzz,
+    get_movers,
 )
 from src.events.listener import handle_event
 from src.utils.errors import WallStreetError
@@ -391,6 +392,10 @@ def _handle_http(event: dict) -> dict:
     # GET /wall-street/daily-buzz
     if path == "/wall-street/daily-buzz" and http_method == "GET":
         return get_daily_buzz()
+
+    # GET /wall-street/movers  (lean gainers/losers for the home screen — no Bedrock)
+    if path == "/wall-street/movers" and http_method == "GET":
+        return get_movers()
 
     # Health check
     if path == "/wall-street/health" and http_method == "GET":

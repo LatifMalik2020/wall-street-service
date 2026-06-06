@@ -56,6 +56,7 @@ from src.handlers.market_features import (
     get_indices_comparison,
     get_featured_etfs,
     get_daily_buzz,
+    get_movers,
 )
 
 __all__ = [
@@ -107,4 +108,5 @@ __all__ = [
     "get_indices_comparison",
     "get_featured_etfs",
     "get_daily_buzz",
+    "get_movers",
 ]
