@@ -426,7 +426,11 @@ def get_indices_comparison(
                 to_date=to_date,
             )
             all_bars[symbol] = bars
-        except ExternalAPIError as exc:
+        except Exception as exc:  # noqa: BLE001
+            # Degrade gracefully on ANY failure — Polygon 403 (index data not on the
+            # plan) AND the "Event loop is closed" RuntimeError from the per-call async
+            # client both land here, so a missing index entitlement returns 200 with
+            # empty data instead of crashing the whole endpoint with a 500.
             logger.warning(
                 "Index aggregates fetch failed",
                 symbol=symbol,
@@ -452,11 +456,15 @@ def get_indices_comparison(
                 )
             current_value = float(last_close) if last_close else None
 
-        indices_meta[symbol] = {
-            "name": index_name,
-            "currentValue": current_value,
-            "changePercent": change_percent,
-        }
+        # Only include indices we actually have data for. Omitting null-valued
+        # entries keeps the iOS decoder (non-optional currentValue/changePercent)
+        # happy — it just shows fewer/no index chips rather than failing to decode.
+        if current_value is not None and change_percent is not None:
+            indices_meta[symbol] = {
+                "name": index_name,
+                "currentValue": current_value,
+                "changePercent": change_percent,
+            }
 
     # Build aligned data points using the union of all timestamps.
     # Use the symbol with the most bars as the reference timeline.
