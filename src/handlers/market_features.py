@@ -29,14 +29,20 @@ from src.utils.logging import logger
 # Polygon uses "I:" prefix for index tickers
 # Index data via ETF PROXIES (SPY/QQQ/DIA/...) rather than raw index tickers (I:SPX).
 # The Polygon "Stocks Starter" plan covers stocks/ETFs but NOT the Indices add-on
-# (I:SPX 403s). An ETF's % change tracks its index almost exactly, which is what the
-# home chips display. (currentValue is the ETF price; the chips show % only.)
+# (I:SPX 403s). An ETF's % change tracks its index almost exactly.
+#
+# `indexLevelFactor` scales the ETF's share price up to the approximate index level
+# the ETF is designed to track (SPY≈S&P/10, DIA≈Dow/100, QQQ≈Nasdaq-100/41,
+# IWM≈Russell-2000/10). This makes the displayed value match the real index SCALE
+# (e.g. ~6,000 for the S&P, not SPY's ~$600) so it lines up with CNBC/Google. The %
+# change is unaffected by the factor and stays exact. The level is a close
+# approximation (ETFs deviate slightly from a perfect ratio), not an official quote.
 _INDEX_TICKER_MAP: dict[str, dict] = {
-    "SPX": {"polygonTicker": "SPY", "name": "S&P 500"},
-    "NDX": {"polygonTicker": "QQQ", "name": "Nasdaq-100"},
-    "DJI": {"polygonTicker": "DIA", "name": "Dow Jones Industrial Average"},
-    "RUT": {"polygonTicker": "IWM", "name": "Russell 2000"},
-    "VIX": {"polygonTicker": "VIXY", "name": "CBOE Volatility Index"},
+    "SPX": {"polygonTicker": "SPY", "name": "S&P 500", "indexLevelFactor": 10.0},
+    "NDX": {"polygonTicker": "QQQ", "name": "Nasdaq-100", "indexLevelFactor": 41.0},
+    "DJI": {"polygonTicker": "DIA", "name": "Dow Jones Industrial Average", "indexLevelFactor": 100.0},
+    "RUT": {"polygonTicker": "IWM", "name": "Russell 2000", "indexLevelFactor": 10.0},
+    "VIX": {"polygonTicker": "VIXY", "name": "CBOE Volatility Index", "indexLevelFactor": 1.0},
 }
 
 _VALID_PERIODS = frozenset({"5D", "1M", "3M", "YTD", "1Y", "5Y"})
@@ -484,7 +490,10 @@ def get_indices_comparison(
                 change_percent = round(
                     ((last_close - first_close) / first_close) * 100, 4
                 )
-            current_value = float(last_close) if last_close else None
+            # Scale the ETF price to its index level so the displayed value matches
+            # the real index scale (factor cancels out of change_percent above).
+            factor = _INDEX_TICKER_MAP[symbol].get("indexLevelFactor", 1.0)
+            current_value = round(float(last_close) * factor, 2) if last_close else None
 
         # Only include indices we actually have data for. Omitting null-valued
         # entries keeps the iOS decoder (non-optional currentValue/changePercent)
@@ -655,9 +664,10 @@ def get_daily_buzz() -> dict:
                 last = bars[-1]["c"]
                 if first:
                     change_pct = ((last - first) / first) * 100
+                    factor = _INDEX_TICKER_MAP[symbol].get("indexLevelFactor", 1.0)
                     index_summary[symbol] = {
                         "name": _INDEX_TICKER_MAP[symbol]["name"],
-                        "currentValue": round(float(last), 2),
+                        "currentValue": round(float(last) * factor, 2),
                         "changePercent": round(float(change_pct), 4),
                     }
         except ExternalAPIError:
