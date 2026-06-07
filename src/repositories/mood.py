@@ -47,6 +47,14 @@ class MoodRepository(DynamoDBRepository):
             mood.sentiment if isinstance(mood.sentiment, str) else mood.sentiment.value
         )
 
+        # Persist updatedAt as a UTC instant with an explicit timezone designator.
+        # mood.updatedAt is a naive UTC datetime; isoformat() alone yields
+        # "2026-06-05T21:45:16.649912" (no offset), which strict ISO-8601 parsers
+        # (iOS ISO8601DateFormatter, datetime.fromisoformat round-trips) reject.
+        updated_at_iso = mood.updatedAt.isoformat()
+        if mood.updatedAt.tzinfo is None and not updated_at_iso.endswith("Z"):
+            updated_at_iso += "Z"
+
         item = {
             "PK": self.PK_MOOD,
             "SK": (
@@ -60,7 +68,7 @@ class MoodRepository(DynamoDBRepository):
             "weekAgo": mood.weekAgo,
             "monthAgo": mood.monthAgo,
             "yearAgo": mood.yearAgo,
-            "updatedAt": mood.updatedAt.isoformat(),
+            "updatedAt": updated_at_iso,
             "indicators": indicators_data,
             "createdAt": self._now_iso(),
         }
@@ -202,6 +210,19 @@ class MoodRepository(DynamoDBRepository):
                 )
             )
 
+        # Parse updatedAt defensively: a malformed/legacy timestamp must not blow
+        # up the whole GET (which would surface as "Unable to load market mood").
+        raw_updated = item.get("updatedAt")
+        try:
+            updated_at = (
+                datetime.fromisoformat(raw_updated.replace("Z", "+00:00"))
+                if raw_updated
+                else datetime.utcnow()
+            )
+        except (ValueError, AttributeError):
+            logger.warning("Unparseable mood updatedAt, using now", value=raw_updated)
+            updated_at = datetime.utcnow()
+
         return MarketMood(
             fearGreedIndex=int(item.get("fearGreedIndex", 50)),
             sentiment=MoodSentiment(item.get("sentiment", "NEUTRAL")),
@@ -209,9 +230,7 @@ class MoodRepository(DynamoDBRepository):
             weekAgo=int(item.get("weekAgo", 50)),
             monthAgo=int(item.get("monthAgo", 50)),
             yearAgo=int(item.get("yearAgo", 50)),
-            updatedAt=datetime.fromisoformat(
-                item.get("updatedAt", datetime.utcnow().isoformat())
-            ),
+            updatedAt=updated_at,
             indicators=indicators,
         )
 
