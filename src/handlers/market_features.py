@@ -347,6 +347,29 @@ _POPULAR_TICKERS = [
 ]
 
 
+def _attach_sparks(client: PolygonMarketClient, movers: list[dict]) -> None:
+    """Attach a short intraday price series (`spark`) to each mover so the home
+    screen can draw a real sparkline. Best-effort per ticker — any failure just
+    leaves `spark` absent (iOS renders the row without a line, never faked)."""
+    today = date.today()
+    from_date = (today - timedelta(days=7)).isoformat()  # buffer for weekends/holidays
+    to_date = today.isoformat()
+    for m in movers:
+        symbol = m.get("symbol")
+        if not symbol:
+            continue
+        try:
+            bars = client.sync_get_index_aggregates(
+                ticker=symbol, multiplier=1, timespan="hour",
+                from_date=from_date, to_date=to_date,
+            )
+            closes = [round(float(b["c"]), 2) for b in bars if b.get("c") is not None]
+            if closes:
+                m["spark"] = closes[-24:]  # last ~24 hourly closes
+        except Exception as exc:  # noqa: BLE001 - degrade gracefully
+            logger.warning("Mover spark fetch failed", symbol=symbol, error=str(exc))
+
+
 def get_movers() -> dict:
     """Robinhood-style top movers for the home screen.
 
@@ -372,6 +395,9 @@ def get_movers() -> dict:
         [m for m in movers if m["changePercent"] < 0],
         key=lambda m: m["changePercent"],
     )[:6]
+    # Attach real intraday sparklines for the returned movers (best-effort).
+    _attach_sparks(client, gainers)
+    _attach_sparks(client, losers)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return _response(
         200,
