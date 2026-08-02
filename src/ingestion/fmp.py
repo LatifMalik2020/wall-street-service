@@ -208,13 +208,18 @@ class FMPClient:
                 f"_{member_id}_{ticker}"
             )
 
+            # Map party/state from FMP if the response carries them; otherwise mark
+            # the party UNKNOWN rather than mislabeling everyone as Democrat.
+            party = self._parse_party(item.get("party"))
+            state = (item.get("state") or item.get("district") or "").strip()
+
             return CongressTrade(
                 id=trade_id,
                 memberId=member_id,
                 memberName=full_name,
-                party=PoliticalParty.DEMOCRAT,  # FMP doesn't reliably provide party
+                party=party,
                 chamber=chamber,
-                state="",  # FMP doesn't provide state
+                state=state,
                 ticker=ticker,
                 companyName=company_name,
                 transactionType=tx_type,
@@ -228,6 +233,24 @@ class FMPClient:
         except Exception as e:
             logger.warning("Failed to parse FMP trade", error=str(e))
             return None
+
+    def _parse_party(self, party_str: Optional[str]) -> PoliticalParty:
+        """Map an FMP party value to PoliticalParty, defaulting to UNKNOWN.
+
+        FMP's congressional-trading feed does not currently include a party field,
+        so this returns UNKNOWN for the common case rather than guessing. If FMP
+        starts supplying party, the D/R/I prefixes are honored.
+        """
+        if not party_str:
+            return PoliticalParty.UNKNOWN
+        first = party_str.strip()[:1].upper()
+        if first == "D":
+            return PoliticalParty.DEMOCRAT
+        if first == "R":
+            return PoliticalParty.REPUBLICAN
+        if first == "I":
+            return PoliticalParty.INDEPENDENT
+        return PoliticalParty.UNKNOWN
 
     def _parse_transaction_type(self, tx_str: str) -> TransactionType:
         """Parse FMP transaction type string."""

@@ -14,6 +14,7 @@ class PoliticalParty(str, Enum):
     DEMOCRAT = "D"
     REPUBLICAN = "R"
     INDEPENDENT = "I"
+    UNKNOWN = "U"  # Party not provided by the data source (e.g. FMP)
 
 
 class Chamber(str, Enum):
