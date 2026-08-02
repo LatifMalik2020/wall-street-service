@@ -24,10 +24,11 @@ def handle_event(event: dict) -> dict:
 
     logger.info("Received EventBridge event", detail_type=detail_type)
 
-    # Run async handler
-    result = asyncio.get_event_loop().run_until_complete(
-        _handle_event_async(detail_type, detail)
-    )
+    # Run async handler. asyncio.run() creates a FRESH event loop per invocation
+    # and closes it cleanly. get_event_loop().run_until_complete reused a shared
+    # loop that the per-call wrapper had already closed on warm Lambda containers,
+    # raising "Event loop is closed" RuntimeError on the second invocation.
+    result = asyncio.run(_handle_event_async(detail_type, detail))
 
     return {
         "statusCode": 200,
