@@ -319,21 +319,37 @@ def _extract_headline(summary: str) -> str:
     return first_sentence
 
 
-def _format_mover(ticker_snapshot: dict) -> dict:
-    """Extract mover fields from a Polygon ticker snapshot."""
+def _format_mover(ticker_snapshot: dict) -> dict | None:
+    """Extract mover fields from a Polygon ticker snapshot.
+
+    Returns None for a malformed snapshot (e.g. non-numeric price) so one bad
+    item is skipped rather than dropping the entire movers payload.
+    """
     day = ticker_snapshot.get("day", {})
     prev_day = ticker_snapshot.get("prevDay", {})
 
     symbol = ticker_snapshot.get("ticker", "")
-    current_price = day.get("c") or ticker_snapshot.get("lastTrade", {}).get("p", 0)
-    prev_day.get("c", 0)
+    # Fall back to the previous close when today's day bar is empty (pre-market /
+    # after the close) so a valid name isn't dropped for lacking an intraday bar.
+    current_price = (
+        day.get("c")
+        or ticker_snapshot.get("lastTrade", {}).get("p")
+        or prev_day.get("c", 0)
+    )
     change_pct = ticker_snapshot.get("todaysChangePerc", 0)
+
+    try:
+        price = float(current_price) if current_price else None
+        change_percent = round(float(change_pct), 2)
+    except (TypeError, ValueError):
+        logger.warning("Skipping malformed mover snapshot", symbol=symbol)
+        return None
 
     return {
         "symbol": symbol,
         "companyName": ticker_snapshot.get("name", symbol),
-        "price": float(current_price) if current_price else None,
-        "changePercent": round(float(change_pct), 2),
+        "price": price,
+        "changePercent": change_percent,
     }
 
 
@@ -391,7 +407,7 @@ def get_movers() -> dict:
     except Exception as exc:  # noqa: BLE001 - degrade gracefully
         logger.warning("Movers bulk snapshot failed", error=str(exc))
 
-    movers = [_format_mover(s) for s in snaps]
+    movers = [m for m in (_format_mover(s) for s in snaps) if m is not None]
     movers = [m for m in movers if m.get("price")]
     gainers = sorted(
         [m for m in movers if m["changePercent"] > 0],
@@ -416,6 +432,42 @@ def get_movers() -> dict:
             },
         ).model_dump(mode="json"),
     )
+
+
+_YAHOO_INDEX_MAP = {
+    "SPX": "^GSPC", "DJI": "^DJI", "NDX": "^NDX", "COMP": "^IXIC", "RUT": "^RUT",
+}
+
+
+def _yahoo_index_quote(symbol: str):
+    """Real (level, daily_change_pct) for an index from Yahoo Finance.
+
+    Free, no key, works from Lambda. Returns None on any failure so callers
+    fall back to whatever they had. This is the SAME source the Daily edition
+    generator uses, keeping index numbers consistent across the app.
+    """
+    yt = _YAHOO_INDEX_MAP.get(symbol)
+    if not yt:
+        return None
+    import json as _json
+    import urllib.parse as _up
+    import urllib.request as _ur
+    try:
+        url = (
+            "https://query1.finance.yahoo.com/v8/finance/chart/"
+            f"{_up.quote(yt)}?interval=1d&range=2d"
+        )
+        req = _ur.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with _ur.urlopen(req, timeout=6) as r:
+            meta = _json.load(r)["chart"]["result"][0]["meta"]
+        price = meta.get("regularMarketPrice")
+        prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+        if price is None or not prev:
+            return None
+        return round(float(price), 2), round((price - prev) / prev * 100, 2)
+    except Exception as exc:  # noqa: BLE001 — network/parse, degrade gracefully
+        logger.warning("yahoo index quote failed", symbol=symbol, error=str(exc))
+        return None
 
 
 def get_indices_comparison(
@@ -494,6 +546,14 @@ def get_indices_comparison(
             # the real index scale (factor cancels out of change_percent above).
             factor = _INDEX_TICKER_MAP[symbol].get("indexLevelFactor", 1.0)
             current_value = round(float(last_close) * factor, 2) if last_close else None
+
+        # Override the ETF approximation with the REAL index level + DAILY change
+        # from Yahoo Finance (free, no key, same source "The Daily" uses) so the
+        # value is accurate AND consistent across every surface. Runs even when
+        # Polygon index data is unavailable (403/empty bars).
+        y = _yahoo_index_quote(symbol)
+        if y is not None:
+            current_value, change_percent = y
 
         # Only include indices we actually have data for. Omitting null-valued
         # entries keeps the iOS decoder (non-optional currentValue/changePercent)
