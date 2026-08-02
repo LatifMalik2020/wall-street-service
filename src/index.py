@@ -448,16 +448,30 @@ def _handle_sqs(event: dict) -> dict:
 
 
 def _get_user_id(event: dict) -> str | None:
-    """Extract user ID from event."""
-    # From Cognito JWT authorizer
-    claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
-    if claims:
-        return claims.get("sub")
+    """Extract the authenticated user id from the API Gateway authorizer ONLY.
 
-    # From request body or query string (for testing)
-    body = _parse_body(event)
-    query_params = event.get("queryStringParameters") or {}
-    return body.get("userId") or query_params.get("userId")
+    Identity MUST come from the verified Cognito/JWT authorizer — never from the
+    request body or query string, which a caller can spoof (IDOR). Supports both
+    gateway shapes:
+      * REST API authorizer:  requestContext.authorizer.claims.sub
+      * HTTP API JWT authorizer: requestContext.authorizer.jwt.claims.sub
+    Returns None when no authenticated sub is present so _require_auth -> 401.
+    """
+    authorizer = event.get("requestContext", {}).get("authorizer", {}) or {}
+
+    # REST API (Cognito authorizer) shape
+    claims = authorizer.get("claims") or {}
+    sub = claims.get("sub")
+    if sub:
+        return sub
+
+    # HTTP API (JWT authorizer) shape
+    jwt_claims = (authorizer.get("jwt") or {}).get("claims") or {}
+    sub = jwt_claims.get("sub")
+    if sub:
+        return sub
+
+    return None
 
 
 def _require_auth(user_id: str | None) -> None:
