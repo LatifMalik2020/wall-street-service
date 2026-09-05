@@ -77,3 +77,35 @@ class MapTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BatchLimitTests(unittest.TestCase):
+    def test_keyless_batches_capped_at_10(self):
+        """Keyless OpenFIGI rejects >10 jobs with HTTP 413 — every batch must
+        respect the limit or nothing ever resolves."""
+        import os
+        sizes = []
+        orig = m._openfigi_batch
+        m._openfigi_batch = lambda batch: (sizes.append(len(batch)) or ({c: {"ticker": "T", "name": "N"} for c in batch}, []))
+        old_key = os.environ.pop("OPENFIGI_API_KEY", None)
+        old_cache, m.CACHE_PATH = m.CACHE_PATH, "/tmp/ts_test_cusip_cache_batch.json"
+        try:
+            import pathlib
+            pathlib.Path(m.CACHE_PATH).unlink(missing_ok=True)
+            m.map_cusips([f"CUSIP{i:04d}" for i in range(25)], pause=0)
+            self.assertTrue(sizes, "no batches dispatched")
+            self.assertLessEqual(max(sizes), 10)
+        finally:
+            m._openfigi_batch = orig
+            m.CACHE_PATH = old_cache
+            if old_key:
+                os.environ["OPENFIGI_API_KEY"] = old_key
+
+    def test_normalize_strips_suffixes_end_only(self):
+        """'CHEVRON CORPORATION' must normalize to 'CHEVRON' — the old substring
+        replace produced 'CHEVRON ORATION' and broke the EDGAR name fallback."""
+        self.assertEqual(m._normalize("CHEVRON CORPORATION"), "CHEVRON")
+        self.assertEqual(m._normalize("CHEVRON CORP"), "CHEVRON")
+        self.assertEqual(m._normalize("Sirius XM Holdings Inc."), "SIRIUS XM")
+        # interior tokens that merely CONTAIN a suffix are untouched
+        self.assertEqual(m._normalize("CORPORATE OFFICE PROPERTIES"), "CORPORATE OFFICE PROPERTIES")

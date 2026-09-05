@@ -28,8 +28,10 @@ EDGAR_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 USER_AGENT = "TradeStreak data research contact@tradestreak.net"
 CACHE_PATH = os.environ.get("CUSIP_CACHE_PATH", "/tmp/tradestreak_cusip_cache.json")
 
-_BATCH = 100          # OpenFIGI max jobs per request
-_KEYLESS_PAUSE = 6.5  # seconds between keyless batches (rate ~10/min)
+_BATCH_KEYED = 100    # OpenFIGI max jobs/request with an API key
+_BATCH_KEYLESS = 10   # keyless hard limit — 11+ jobs returns HTTP 413
+_KEYLESS_PAUSE = 6.5  # seconds between keyless batches (rate ~25/min)
+_MAX_PASSES = 4       # retry throttled jobs until convergence (bounded)
 
 
 def _load_cache() -> Dict[str, Dict[str, str]]:
@@ -81,12 +83,18 @@ def _openfigi_batch(cusips: List[str]) -> tuple:
 _edgar_names: Optional[Dict[str, str]] = None  # normalized name -> ticker
 
 
+_SUFFIX_TOKENS = {"INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY",
+                  "PLC", "LTD", "LIMITED", "LP", "SA", "NV", "NEW", "DEL",
+                  "HOLDINGS", "HLDGS", "GROUP", "GRP", "CLASS", "CL", "A", "B", "C"}
+
+
 def _normalize(name: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9 ]", " ", name.upper())
-    for suffix in (" INC", " CORP", " CO", " PLC", " LTD", " LP", " SA", " NV",
-                   " CLASS A", " CLASS B", " CLASS C", " NEW", " DEL"):
-        name = name.replace(suffix, " ")
-    return " ".join(name.split())
+    """Uppercase, drop punctuation, then strip legal-suffix tokens from the END
+    only (substring replace corrupted names: CORPORATION -> ' ORATION')."""
+    tokens = re.sub(r"[^A-Za-z0-9 ]", " ", name.upper()).split()
+    while len(tokens) > 1 and tokens[-1] in _SUFFIX_TOKENS:
+        tokens.pop()
+    return " ".join(tokens)
 
 
 def _edgar_name_lookup(issuer: str) -> Optional[Dict[str, str]]:
@@ -110,27 +118,30 @@ def map_cusips(cusips: List[str], issuers: Optional[Dict[str, str]] = None,
     resolved = {c: cache[c] for c in cusips if c in cache}
     missing = [c for c in cusips if c not in resolved]
 
-    wait = pause if pause is not None else (
-        0.3 if os.environ.get("OPENFIGI_API_KEY") else _KEYLESS_PAUSE)
-    retryable: List[str] = []
-    for i in range(0, len(missing), _BATCH):
-        batch = missing[i:i + _BATCH]
-        try:
-            hits, erred = _openfigi_batch(batch)
-            resolved.update(hits)
-            retryable.extend(erred)
-        except Exception:
-            retryable.extend(batch)  # whole-request failure — retry below
-        if i + _BATCH < len(missing):
-            time.sleep(wait)
-
-    if retryable:
-        time.sleep(max(wait, 3.0))  # back off, then one retry pass
-        try:
-            hits, _ = _openfigi_batch(retryable)
-            resolved.update(hits)
-        except Exception:
-            pass  # EDGAR name fallback still applies
+    keyed = bool(os.environ.get("OPENFIGI_API_KEY"))
+    batch_size = _BATCH_KEYED if keyed else _BATCH_KEYLESS
+    wait = pause if pause is not None else (0.3 if keyed else _KEYLESS_PAUSE)
+    # Retry throttled jobs until convergence (bounded, growing backoff). A single
+    # retry pass left $50B of Berkshire's book unmapped — throttle errors are
+    # the norm keyless, not the exception.
+    pending = missing
+    for attempt in range(_MAX_PASSES):
+        if not pending:
+            break
+        if attempt > 0:
+            time.sleep(max(wait, 3.0) * attempt)
+        still: List[str] = []
+        for i in range(0, len(pending), batch_size):
+            batch = pending[i:i + batch_size]
+            try:
+                hits, erred = _openfigi_batch(batch)
+                resolved.update(hits)
+                still.extend(erred)
+            except Exception:
+                still.extend(batch)  # whole-request failure — retry next pass
+            if i + batch_size < len(pending):
+                time.sleep(wait)
+        pending = still  # EDGAR name fallback still applies to leftovers
 
     if issuers:
         for cusip in cusips:
