@@ -9,6 +9,7 @@ import json
 from typing import Optional
 
 from src.ingestion.polygon_client import PolygonMarketClient
+from src.ingestion.alpaca_market import market_data_client
 from src.models.base import APIResponse
 from src.models.stocks import (
     FloatData,
@@ -194,7 +195,7 @@ def get_stock_detail(symbol: str) -> dict:
     symbol = _validate_symbol(symbol)
     logger.info("Fetching stock detail", symbol=symbol)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
     raw = client.sync_get_stock_detail(symbol)
 
     snapshot = _build_snapshot(raw.get("snapshot"))
@@ -232,7 +233,7 @@ def get_stock_ratios(symbol: str) -> dict:
     symbol = _validate_symbol(symbol)
     logger.info("Fetching stock ratios", symbol=symbol)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
     try:
         raw = client.sync_get_ratios(symbol)
     except Exception as exc:
@@ -265,7 +266,7 @@ def get_stock_financials(symbol: str, timeframe: str = "annual") -> dict:
 
     logger.info("Fetching stock financials", symbol=symbol, timeframe=timeframe)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
     # Polygon income statements are paid-plan; free-tier returns 403.
     # Log and emit an empty list rather than bubbling up as a 502.
     try:
@@ -302,7 +303,7 @@ def get_stock_short_interest(symbol: str) -> dict:
     symbol = _validate_symbol(symbol)
     logger.info("Fetching short interest", symbol=symbol)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
 
     def _safe(fn, *a, **kw):
         try:
@@ -370,7 +371,7 @@ def get_stock_technicals(symbol: str) -> dict:
     symbol = _validate_symbol(symbol)
     logger.info("Fetching stock technicals", symbol=symbol)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
 
     # Fetch all four indicators; partial failures surface as empty lists rather
     # than aborting the entire request so the client can still render available data.
@@ -412,7 +413,7 @@ def get_ipos(days_ahead: int = 30) -> dict:
 
     logger.info("Fetching IPO calendar", days_ahead=days_ahead)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
     raw_list = client.sync_get_ipos(limit=50, days_ahead=days_ahead)
 
     events = [_build_ipo_event(r) for r in raw_list]
@@ -437,7 +438,7 @@ def get_market_status() -> dict:
     """
     logger.info("Fetching market status")
 
-    client = PolygonMarketClient()
+    client = market_data_client()
     raw = client.sync_get_market_status()
 
     if raw is None:
@@ -465,7 +466,7 @@ def get_stock_filings(symbol: str, limit: int = 10) -> dict:
 
     logger.info("Fetching SEC filings", symbol=symbol, limit=limit)
 
-    client = PolygonMarketClient()
+    client = market_data_client()
     raw_list = client.sync_get_filings(symbol, limit=limit)
 
     filings = [_build_sec_filing(r) for r in raw_list]

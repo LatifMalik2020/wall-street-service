@@ -7,6 +7,7 @@ from src.ingestion.quiver_quant import QuiverQuantClient
 from src.ingestion.fmp import FMPClient
 from src.ingestion.fear_greed import FearGreedClient
 from src.ingestion.polygon_client import PolygonMarketClient
+from src.ingestion.alpaca_market import market_data_client
 from src.services.congress import CongressService
 from src.services.mood import MoodService
 from src.services.earnings import EarningsService
@@ -29,7 +30,7 @@ class DataIngestionScheduler:
         self.quiver_client = QuiverQuantClient()
         self.house_clerk_client = HouseClerkClient()
         self.fear_greed_client = FearGreedClient()
-        self.polygon_client = PolygonMarketClient()
+        self.polygon_client = market_data_client()
 
         # Initialize services
         self.congress_service = CongressService()

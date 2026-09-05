@@ -18,6 +18,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from src.ingestion.polygon_client import PolygonMarketClient
+from src.ingestion.alpaca_market import market_data_client
 from src.models.base import APIResponse
 from src.utils.errors import ExternalAPIError, ValidationError
 from src.utils.logging import logger
@@ -400,7 +401,7 @@ def get_movers() -> dict:
     recognizable names rather than the market-wide penny-stock pumps that a raw
     "top gainers" query returns.
     """
-    client = PolygonMarketClient()
+    client = market_data_client()
     snaps: list[dict] = []
     try:
         snaps = client.sync_get_bulk_snapshot(_POPULAR_TICKERS)
@@ -499,7 +500,7 @@ def get_indices_comparison(
         to_date=to_date,
     )
 
-    client = PolygonMarketClient()
+    client = market_data_client()
 
     # Fetch aggregates for all requested symbols
     all_bars: dict[str, list[dict]] = {}
@@ -606,7 +607,7 @@ def get_featured_etfs() -> dict:
     logger.info("Fetching featured ETFs", count=len(_ETF_CATALOG))
 
     etf_symbols = [etf["symbol"] for etf in _ETF_CATALOG]
-    client = PolygonMarketClient()
+    client = market_data_client()
 
     snapshots: dict[str, dict] = {}
     try:
@@ -694,7 +695,7 @@ def get_daily_buzz() -> dict:
     """
     logger.info("Generating daily buzz")
 
-    client = PolygonMarketClient()
+    client = market_data_client()
 
     # Fetch market movers
     gainers_raw: list[dict] = []
