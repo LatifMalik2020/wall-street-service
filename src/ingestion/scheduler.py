@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from src.ingestion.house_clerk import HouseClerkClient
 from src.ingestion.quiver_quant import QuiverQuantClient
 from src.ingestion.fmp import FMPClient
 from src.ingestion.fear_greed import FearGreedClient
@@ -26,6 +27,7 @@ class DataIngestionScheduler:
         # Initialize clients
         self.fmp_client = FMPClient()
         self.quiver_client = QuiverQuantClient()
+        self.house_clerk_client = HouseClerkClient()
         self.fear_greed_client = FearGreedClient()
         self.polygon_client = PolygonMarketClient()
 
@@ -38,28 +40,42 @@ class DataIngestionScheduler:
         """Close all API clients."""
         await self.fmp_client.close()
         await self.quiver_client.close()
+        await self.house_clerk_client.close()
         await self.fear_greed_client.close()
         await self.polygon_client.close()
 
     async def ingest_congress_trades(self) -> dict:
         """Ingest Congress trading data.
 
-        Uses FMP as primary source, falls back to QuiverQuant.
-        Should be scheduled to run daily.
+        Primary source: House Clerk disclosures (free, primary source).
+        Fallbacks: FMP, then QuiverQuant. Should be scheduled to run daily.
         """
         try:
             logger.info("Starting Congress trades ingestion")
 
             trades = []
 
-            # Try FMP first (primary source)
+            # House Clerk first — primary source, no API key, updated daily
             try:
-                trades = await self.fmp_client.fetch_all_latest(limit=200)
-                logger.info("Fetched Congress trades from FMP", count=len(trades))
-            except Exception as fmp_err:
-                logger.warning(
-                    "FMP fetch failed, falling back to QuiverQuant", error=str(fmp_err)
+                trades = await self.house_clerk_client.fetch_all_latest(limit=200)
+                logger.info(
+                    "Fetched Congress trades from House Clerk", count=len(trades)
                 )
+            except Exception as hc_err:
+                logger.warning(
+                    "House Clerk fetch failed, falling back to FMP", error=str(hc_err)
+                )
+
+            # FMP fallback (requires FMP_API_KEY)
+            if not trades:
+                try:
+                    trades = await self.fmp_client.fetch_all_latest(limit=200)
+                    logger.info("Fetched Congress trades from FMP", count=len(trades))
+                except Exception as fmp_err:
+                    logger.warning(
+                        "FMP fetch failed, falling back to QuiverQuant",
+                        error=str(fmp_err),
+                    )
 
             # Fall back to QuiverQuant if FMP returned nothing
             if not trades:
