@@ -285,6 +285,36 @@ class AlpacaMarketClient(PolygonMarketClient):
                            symbol=symbol, error=str(e))
         return await super().get_ratios(symbol)
 
+    async def get_income_statements(self, symbol: str, timeframe: str = "annual",
+                                    limit: int = 4) -> List[Dict]:
+        from src.ingestion import sec_facts
+        try:
+            rows = await sec_facts.get_income_statements(symbol, timeframe, limit)
+            if rows:
+                return rows
+        except Exception as e:  # noqa: BLE001
+            logger.warning("SEC income statements failed; falling back",
+                           symbol=symbol, error=str(e))
+        return await super().get_income_statements(symbol, timeframe, limit)
+
+    async def get_filings(self, symbol: str, limit: int = 10) -> List[Dict]:
+        from src.ingestion import sec_facts
+        try:
+            rows = await sec_facts.get_filings(symbol, limit)
+            if rows:
+                return rows
+        except Exception as e:  # noqa: BLE001
+            logger.warning("EDGAR filings failed; falling back",
+                           symbol=symbol, error=str(e))
+        return await super().get_filings(symbol, limit)
+
+    async def get_short_volume(self, symbol: str, limit: int = 5) -> List[Dict]:
+        from src.ingestion import finra
+        rows = await finra.get_short_volume(symbol, limit)
+        if rows:
+            return rows
+        return await super().get_short_volume(symbol, limit)
+
     # -- indicators, computed locally from daily bars --
 
     async def _daily_closes(self, symbol: str, days: int) -> List[Dict]:

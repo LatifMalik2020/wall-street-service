@@ -69,5 +69,24 @@ class RatioTests(unittest.TestCase):
         self.assertEqual(r["earnings_per_share"], 6.0)
 
 
+class IncomeStatementTests(unittest.TestCase):
+    def test_annual_rows_assembled_from_frames(self):
+        rows = sec_facts.income_statements_from_facts(fixture_facts(), "test", "annual", 4)
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["start_date"], "2024-10-01")
+        self.assertEqual(row["end_date"], "2025-09-30")
+        self.assertEqual(row["revenues"], 50_000_000_000)
+        self.assertEqual(row["net_income_loss"], 6_000_000_000)
+        self.assertEqual(row["earnings_per_share_diluted"], 5.25)
+        self.assertIsNone(row["ebitda"])
+
+    def test_quarterly_uses_quarter_frames(self):
+        rows = sec_facts.income_statements_from_facts(fixture_facts(), "test", "quarterly", 4)
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[0]["end_date"], "2026-06-28")  # newest first
+        self.assertEqual(rows[0]["earnings_per_share_diluted"], 1.50)
+
+
 if __name__ == "__main__":
     unittest.main()

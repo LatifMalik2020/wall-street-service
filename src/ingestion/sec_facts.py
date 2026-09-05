@@ -220,3 +220,120 @@ async def get_ratios(symbol: str, price: Optional[float]) -> Optional[Dict]:
     except Exception as e:  # noqa: BLE001 — never let math kill the endpoint
         logger.warning("SEC ratios computation failed", symbol=symbol, error=str(e))
         return None
+
+
+# -- income statements ------------------------------------------------------
+
+_IS_TAGS = {
+    "revenues": ["RevenueFromContractWithCustomerExcludingAssessedTax",
+                 "Revenues", "SalesRevenueNet"],
+    "operating_income": ["OperatingIncomeLoss"],
+    "net_income_loss": ["NetIncomeLoss"],
+    "earnings_per_share_basic": ["EarningsPerShareBasic"],
+    "earnings_per_share_diluted": ["EarningsPerShareDiluted"],
+    "operating_expenses": ["OperatingExpenses", "CostsAndExpenses"],
+    "research_and_development": ["ResearchAndDevelopmentExpense"],
+    "interest_expense": ["InterestExpense", "InterestExpenseNonoperating"],
+    "income_tax_expense": ["IncomeTaxExpenseBenefit"],
+}
+
+
+def income_statements_from_facts(facts: Dict, symbol: str,
+                                 timeframe: str = "annual",
+                                 limit: int = 4) -> List[Dict]:
+    """Income-statement rows shaped like Polygon's, assembled from XBRL
+    duration frames (annual = ~12-month 10-K frames, quarterly = ~3-month)."""
+    lo, hi = (300, 400) if timeframe == "annual" else (80, 100)
+
+    per_field: Dict[str, Dict[tuple, Dict]] = {}
+    for field, tags in _IS_TAGS.items():
+        collected: Dict[tuple, Dict] = {}
+        for tag in tags:
+            for v in and_first(facts, "us-gaap", tag):
+                start, end = v.get("start"), v.get("end")
+                if v.get("val") is None or not start or not end:
+                    continue
+                try:
+                    days = (date.fromisoformat(end) - date.fromisoformat(start)).days
+                except ValueError:
+                    continue
+                if lo <= days <= hi:
+                    collected.setdefault((start, end), v)  # first tag wins
+            if collected:
+                break
+        per_field[field] = collected
+
+    periods = sorted(
+        {k for c in per_field.values() for k in c},
+        key=lambda k: k[1], reverse=True,
+    )[:limit]
+
+    rows = []
+    for start, end in periods:
+        anchor = per_field["net_income_loss"].get((start, end)) or \
+                 per_field["revenues"].get((start, end)) or {}
+        row: Dict[str, Any] = {
+            "ticker": symbol.upper(),
+            "timeframe": timeframe,
+            "fiscal_year": anchor.get("fy"),
+            "fiscal_period": anchor.get("fp"),
+            "start_date": start,
+            "end_date": end,
+            "ebitda": None,
+        }
+        for field, collected in per_field.items():
+            v = collected.get((start, end))
+            row[field] = float(v["val"]) if v else None
+        rows.append(row)
+    return rows
+
+
+async def get_income_statements(symbol: str, timeframe: str = "annual",
+                                limit: int = 4) -> List[Dict]:
+    facts = await _company_facts(symbol)
+    if not facts:
+        return []
+    return income_statements_from_facts(facts, symbol, timeframe, limit)
+
+
+# -- filings (EDGAR submissions) --------------------------------------------
+
+_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
+
+
+async def get_filings(symbol: str, limit: int = 10) -> List[Dict]:
+    """Recent SEC filings shaped like Polygon's filings index rows."""
+    cik = await _ticker_to_cik(symbol)
+    if cik is None:
+        return []
+    async with httpx.AsyncClient(timeout=30, headers=_UA) as c:
+        resp = await c.get(_SUBMISSIONS_URL.format(cik=cik))
+        if resp.status_code == 404:
+            return []
+        resp.raise_for_status()
+        subs = resp.json()
+    recent = subs.get("filings", {}).get("recent", {})
+    forms = recent.get("form", [])
+    dates = recent.get("filingDate", [])
+    accs = recent.get("accessionNumber", [])
+    docs = recent.get("primaryDocument", [])
+    name = subs.get("name", "")
+    out = []
+    for i in range(min(len(forms), len(dates), len(accs))):
+        acc = accs[i]
+        doc = docs[i] if i < len(docs) else ""
+        url = (f"https://www.sec.gov/Archives/edgar/data/{cik}/"
+               f"{acc.replace('-', '')}/{doc}") if doc else \
+              f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik:010d}"
+        out.append({
+            "accession_number": acc,
+            "cik": str(cik),
+            "ticker": symbol.upper(),
+            "issuer_name": name,
+            "filing_date": dates[i],
+            "form_type": forms[i],
+            "filing_url": url,
+        })
+        if len(out) >= limit:
+            break
+    return out
