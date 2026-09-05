@@ -270,6 +270,21 @@ class AlpacaMarketClient(PolygonMarketClient):
             "exchanges": {"nasdaq": market, "nyse": market, "otc": market},
         }
 
+    # -- fundamentals from SEC company facts (primary source, free) --
+
+    async def get_ratios(self, symbol: str) -> Optional[Dict]:
+        from src.ingestion import sec_facts
+        try:
+            quote = await self.get_quote(symbol)
+            price = quote.get("price") if quote else None
+            ratios = await sec_facts.get_ratios(symbol, price)
+            if ratios:
+                return ratios
+        except Exception as e:  # noqa: BLE001
+            logger.warning("SEC ratios failed; falling back to Polygon",
+                           symbol=symbol, error=str(e))
+        return await super().get_ratios(symbol)
+
     # -- indicators, computed locally from daily bars --
 
     async def _daily_closes(self, symbol: str, days: int) -> List[Dict]:
