@@ -13,7 +13,7 @@ import asyncio
 from datetime import datetime
 from typing import List, Optional
 
-from src.ingestion import house_ptr
+from src.ingestion import house_ptr, legislators
 from src.models.congress import Chamber, CongressTrade, PoliticalParty, TransactionType
 from src.utils.logging import logger
 from src.utils.normalize import normalize_member_id
@@ -37,21 +37,27 @@ def _parse_date(raw: str) -> Optional[datetime]:
 
 
 def to_congress_trade(filing: "house_ptr.PTRFiling", trade: "house_ptr.PTRTrade",
-                      row: int) -> Optional[CongressTrade]:
-    """One parsed PTR row -> CongressTrade (pure; None if dates unparseable)."""
+                      row: int,
+                      member_info: Optional[dict] = None) -> Optional[CongressTrade]:
+    """One parsed PTR row -> CongressTrade (pure; None if dates unparseable).
+    member_info (from legislators.lookup) supplies party + canonical name."""
     tx_date = _parse_date(trade.transaction_date)
     disc_date = _parse_date(filing.filing_date) or _parse_date(trade.notification_date)
     if not tx_date or not disc_date:
         return None
-    member_id = normalize_member_id(filing.member)
+    member_name = (member_info or {}).get("fullName") or filing.member
+    party = {"D": PoliticalParty.DEMOCRAT, "R": PoliticalParty.REPUBLICAN,
+             "I": PoliticalParty.INDEPENDENT}.get(
+                 (member_info or {}).get("party", ""), PoliticalParty.UNKNOWN)
+    member_id = normalize_member_id(member_name)
     return CongressTrade(
         # doc_id + row keeps ids unique when a member trades a ticker twice
         # in one filing (FMP's date_member_ticker scheme collapsed those)
         id=f"{disc_date.strftime('%Y%m%d')}_{member_id}_{trade.ticker}"
            f"_{filing.doc_id}_{row:03d}",
         memberId=member_id,
-        memberName=filing.member,
-        party=PoliticalParty.UNKNOWN,
+        memberName=member_name,
+        party=party,
         chamber=Chamber.HOUSE,
         state=filing.state_dst[:2],
         ticker=trade.ticker,
@@ -70,6 +76,12 @@ def fetch_latest_sync(year: Optional[int] = None,
     """Trades from the freshest e-filed PTRs (blocking; wrapped async below)."""
     year = year or datetime.utcnow().year
     filings = [f for f in house_ptr.fetch_index(year) if f.is_efiled]
+    try:
+        member_index = legislators.load_member_index()
+    except Exception as e:
+        member_index = {}
+        logger.warning("legislators dataset unavailable; party will be UNKNOWN",
+                       error=str(e))
     trades: List[CongressTrade] = []
     parsed = failed = 0
     for filing in filings[-max_filings:]:
@@ -81,8 +93,9 @@ def fetch_latest_sync(year: Optional[int] = None,
             logger.warning("House Clerk PTR fetch/parse failed",
                            doc_id=filing.doc_id, error=str(e))
             continue
+        info = legislators.lookup(member_index, filing.state_dst, filing.last)
         for n, row in enumerate(rows):
-            trade = to_congress_trade(filing, row, n)
+            trade = to_congress_trade(filing, row, n, member_info=info)
             if trade:
                 trades.append(trade)
     logger.info("House Clerk ingest", filings=parsed, failed=failed,

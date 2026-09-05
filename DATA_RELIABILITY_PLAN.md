@@ -4,6 +4,26 @@ User mandate: shadowing + congress trades need RELIABLE data. Audit findings
 below; the pipeline wasn't unreliable — it was **dead since January** and
 nothing alarmed.
 
+## Status (2026-09-05, end of data-foundation loop)
+
+DONE (all local commits, nothing deployed per no-AWS directive):
+- [x] EDGAR 13F ingester + diff + CUSIP->ticker (convergence-fixed) — 5 filers proven, Bridgewater 997 positions
+- [x] Shadow engine (pure): init / lazy rebalance / idempotency — proven on real Berkshire May->Aug filings at live prices
+- [x] Stale-filer guard (>135d) + top-2N mapping cost cap
+- [x] House Clerk PTR ingester (primary source, replaces Quiver) — 89% trade-level coverage, RC4 PDFs via pypdf
+- [x] Congress shadows: PTR range-midpoint weight nudges on the same engine
+- [x] Party/canonical-name enrichment via unitedstates/congress-legislators (89% of live trades enriched)
+- [x] Deploy-ready service layer: ShadowRepository + ShadowService + 4 API routes + EventBridge refresh handler
+- [x] Scheduler chain: House Clerk -> FMP -> Quiver
+- [x] 38 unit tests green across the stack
+
+USER-GATED (awaiting go-ahead):
+- [ ] Deploy wall-street-service (revives congress feed + ships shadow API)
+- [ ] Freshness alarms (saved:0 metric filter) — prod change
+- [ ] FMP key decision (now optional — House Clerk covers House trades free); Quiver cancel decision ($10/mo, 404ing)
+- [ ] Senate eFD ingestion (phase 2; session-gated scraping)
+- [ ] iOS shadow surface
+
 ## Findings (all verified live tonight)
 
 1. **Congress ingestion silently failing nightly.** EventBridge rule fires

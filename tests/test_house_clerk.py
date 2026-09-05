@@ -50,5 +50,25 @@ class AdapterTests(unittest.TestCase):
         self.assertIsNone(to_congress_trade(filing, bad, 0))
 
 
+class EnrichmentTests(unittest.TestCase):
+    def test_member_info_fills_party_and_canonical_name(self):
+        info = {"party": "D", "fullName": "Jonathan L. Jackson"}
+        t = to_congress_trade(FILING, TRADE, 0, member_info=info)
+        self.assertEqual(t.party, PoliticalParty.DEMOCRAT)
+        self.assertEqual(t.memberName, "Jonathan L. Jackson")
+
+    def test_no_info_stays_unknown(self):
+        t = to_congress_trade(FILING, TRADE, 0, member_info=None)
+        self.assertEqual(t.party, PoliticalParty.UNKNOWN)
+
+    def test_lookup_by_district_then_state(self):
+        from src.ingestion.legislators import lookup
+        index = {"IL:01:jackson": {"party": "D", "fullName": "Jonathan L. Jackson"},
+                 "OK:hern": {"party": "R", "fullName": "Kevin Hern"}}
+        self.assertEqual(lookup(index, "IL01", "Jackson")["party"], "D")
+        self.assertEqual(lookup(index, "OK01", "Hern")["party"], "R")
+        self.assertIsNone(lookup(index, "TX07", "Nobody"))
+
+
 if __name__ == "__main__":
     unittest.main()
