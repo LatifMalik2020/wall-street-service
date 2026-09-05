@@ -55,10 +55,15 @@ def main():
     accession, filed = filings[0]["accession"], filings[0]["filingDate"]
     holdings = edgar.fetch_quarter_holdings(cik, accession)
 
-    mapping = cmap.map_cusips([h.cusip for h in holdings],
-                              issuers={h.cusip: h.issuer for h in holdings})
+    # Only the top-N positions can enter the shadow, so only map CUSIPs that
+    # could plausibly make the cut (2x buffer for unmappable rows). Keeps
+    # keyless OpenFIGI runtime sane on huge books (Bridgewater files 100s).
+    holdings.sort(key=lambda h: h.value_usd, reverse=True)
+    candidates = holdings[:engine.TOP_N_POSITIONS * 2]
+    mapping = cmap.map_cusips([h.cusip for h in candidates],
+                              issuers={h.cusip: h.issuer for h in candidates})
     rows = [{"ticker": mapping.get(h.cusip, {}).get("ticker", ""),
-             "value_usd": h.value_usd, "provenance": accession} for h in holdings]
+             "value_usd": h.value_usd, "provenance": accession} for h in candidates]
 
     targets = engine.target_weights_from_holdings(rows)
     prices = live_prices([t.ticker for t in targets])
@@ -75,6 +80,15 @@ def main():
     print(f"{'CASH':<7}{'':>10}{'':>10}{portfolio.cash:>11.2f}{portfolio.cash / total * 100:>7.1f}%")
     print(f"\ntotal ${total:,.2f} · as-of label: \"Based on filings as of {filed} — "
           f"positions may have changed since.\"")
+
+    # Staleness guard: 13Fs are due 45 days after quarter end, so a healthy
+    # filer never goes >135 days without a new one. Older = likely deregistered
+    # (e.g. Scion, last filing 2025-11-03) — the shadow must say so loudly.
+    import datetime
+    age = (datetime.date.today() - datetime.date.fromisoformat(filed)).days
+    if age > 135:
+        print(f"⚠ STALE FILER: last 13F is {age} days old — fund may have "
+              f"deregistered or stopped reporting. Do not offer for new follows.")
 
 
 if __name__ == "__main__":
