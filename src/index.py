@@ -55,6 +55,11 @@ from src.handlers import (
     get_featured_etfs,
     get_daily_buzz,
     get_movers,
+    # Shadow Portfolios
+    get_shadow_roster,
+    follow_shadow_filer,
+    get_user_shadow,
+    get_user_shadow_trades,
 )
 from src.events.listener import handle_event
 from src.utils.errors import WallStreetError
@@ -125,6 +130,25 @@ def _handle_http(event: dict) -> dict:
     logger.info("HTTP request", method=http_method, path=path)
 
     # Route mapping
+    # Shadow Portfolio routes
+    if path == "/wall-street/shadow/roster" and http_method == "GET":
+        return get_shadow_roster()
+
+    if path == "/wall-street/shadow/follow" and http_method == "POST":
+        _require_auth(user_id)
+        return follow_shadow_filer(user_id, body or {})
+
+    if path == "/wall-street/shadow/trades" and http_method == "GET":
+        _require_auth(user_id)
+        return get_user_shadow_trades(
+            user_id, limit=int(query_params.get("limit", 50))
+        )
+
+    if path.startswith("/wall-street/shadow/") and http_method == "GET":
+        _require_auth(user_id)
+        cik = path_params.get("cik") or path.split("/")[-1]
+        return get_user_shadow(user_id, cik)
+
     # Cramer routes
     if path == "/wall-street/cramer/picks" and http_method == "GET":
         return get_cramer_picks(

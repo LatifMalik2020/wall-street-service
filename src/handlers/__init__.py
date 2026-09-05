@@ -58,6 +58,13 @@ from src.handlers.market_features import (
     get_daily_buzz,
     get_movers,
 )
+from src.handlers.shadow import (
+    get_shadow_roster,
+    follow_shadow_filer,
+    get_user_shadow,
+    get_user_shadow_trades,
+    refresh_shadow_filers,
+)
 
 __all__ = [
     # Cramer
@@ -109,4 +116,10 @@ __all__ = [
     "get_featured_etfs",
     "get_daily_buzz",
     "get_movers",
+    # Shadow Portfolios
+    "get_shadow_roster",
+    "follow_shadow_filer",
+    "get_user_shadow",
+    "get_user_shadow_trades",
+    "refresh_shadow_filers",
 ]
