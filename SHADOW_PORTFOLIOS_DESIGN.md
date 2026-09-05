@@ -33,6 +33,13 @@ lag exists (a lesson tie-in, not a fine-print apology).
 existing price infra. This comparison ("Buffett's shadow beat your picks by
 4.2% this quarter") is the retention loop and the Ticker conversation starter.
 
+**Stale-filer guard** — 13Fs are due 45 days after quarter end; >135 days
+without a new filing means the fund likely deregistered (Scion, 2025-11).
+Stale filers: existing shadows keep working but show a prominent warning;
+the filer is removed from the "start following" roster. Mapping cost guard:
+only map CUSIPs in the top 2×N by value — Bridgewater files ~1,000 positions
+but only 20 can enter a shadow.
+
 ## Storage (existing tradestreak-wall-street table patterns)
 
 | pk | sk | body |
