@@ -137,6 +137,41 @@ def initialize_shadow(allocation: float, targets: List[TargetWeight],
     return portfolio, trades
 
 
+PTR_REFERENCE_BOOK = 1_000_000.0  # assumed member portfolio for scaling nudges
+PTR_MAX_WEIGHT = 0.25             # single-ticker cap for congress shadows
+
+
+def nudge_targets_from_ptr(targets: List[TargetWeight], ptr_trades: List[dict],
+                           reference_book: float = PTR_REFERENCE_BOOK) -> List[TargetWeight]:
+    """Congress mode: PTRs disclose trades (deltas + amount RANGES), never the
+    full book, so a congress shadow follows trades as weight NUDGES:
+
+      buy          -> weight += midpoint(range) / reference_book (capped)
+      sell         -> exit the position (a full 'S' is a disclosed full sale)
+      sell_partial -> weight -= midpoint(range) / reference_book (floored at 0)
+
+    ptr_trades: [{ticker, action, amount_low, amount_high}]. Weights need not
+    sum to 1 — the remainder stays as honest cash, same as 13F shadows.
+    """
+    weights = {t.ticker: t.weight for t in targets}
+    provenance = {t.ticker: t.provenance for t in targets}
+    for tr in ptr_trades:
+        ticker = tr["ticker"]
+        delta = ((tr["amount_low"] + tr["amount_high"]) / 2.0) / reference_book
+        if tr["action"] == "buy":
+            weights[ticker] = min(weights.get(ticker, 0.0) + delta, PTR_MAX_WEIGHT)
+        elif tr["action"] == "sell":
+            weights.pop(ticker, None)
+        elif tr["action"] == "sell_partial":
+            if ticker in weights:
+                weights[ticker] = max(weights[ticker] - delta, 0.0)
+                if weights[ticker] < MIN_WEIGHT:
+                    weights.pop(ticker)
+        provenance[ticker] = tr.get("provenance", provenance.get(ticker, ""))
+    return [TargetWeight(tk, w, provenance.get(tk, ""))
+            for tk, w in weights.items() if w >= MIN_WEIGHT]
+
+
 def apply_filing(portfolio: ShadowPortfolio, new_targets: List[TargetWeight],
                  prices: Dict[str, float], accession: str) -> List[ShadowTrade]:
     """Rebalance an existing shadow to a new filing's target weights.

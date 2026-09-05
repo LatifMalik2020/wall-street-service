@@ -93,3 +93,36 @@ class FilingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PTRNudgeTests(unittest.TestCase):
+    def test_buy_nudges_weight_by_range_midpoint(self):
+        targets = m.nudge_targets_from_ptr(
+            [], [{"ticker": "NVDA", "action": "buy",
+                  "amount_low": 15_001, "amount_high": 50_000,
+                  "provenance": "doc-1"}])
+        self.assertEqual(len(targets), 1)
+        self.assertAlmostEqual(targets[0].weight, 32_500.5 / 1_000_000, places=6)
+        self.assertEqual(targets[0].provenance, "doc-1")
+
+    def test_full_sell_exits_partial_reduces(self):
+        base = [m.TargetWeight("AAPL", 0.10), m.TargetWeight("MSFT", 0.10)]
+        targets = m.nudge_targets_from_ptr(base, [
+            {"ticker": "AAPL", "action": "sell", "amount_low": 1, "amount_high": 1},
+            {"ticker": "MSFT", "action": "sell_partial",
+             "amount_low": 15_001, "amount_high": 50_000},
+        ])
+        weights = {t.ticker: t.weight for t in targets}
+        self.assertNotIn("AAPL", weights)             # full sale -> exit
+        self.assertAlmostEqual(weights["MSFT"], 0.10 - 32_500.5 / 1_000_000, places=6)
+
+    def test_cap_and_floor(self):
+        capped = m.nudge_targets_from_ptr(
+            [], [{"ticker": "SPY", "action": "buy",
+                  "amount_low": 500_000, "amount_high": 1_000_000}])
+        self.assertAlmostEqual(capped[0].weight, m.PTR_MAX_WEIGHT)
+        gone = m.nudge_targets_from_ptr(
+            [m.TargetWeight("KO", 0.004)],
+            [{"ticker": "KO", "action": "sell_partial",
+              "amount_low": 1_001, "amount_high": 15_000}])
+        self.assertEqual(gone, [])                    # below sliver -> dropped
