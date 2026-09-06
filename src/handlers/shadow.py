@@ -33,9 +33,9 @@ def _live_prices(tickers: List[str]) -> Dict[str, float]:
     if not tickers:
         return {}
     try:
-        from src.ingestion.polygon_client import PolygonClient
-        client = PolygonClient()
-        quotes = asyncio.run(client.batch_quotes(tickers))
+        from src.ingestion.alpaca_market import market_data_client
+        client = market_data_client()
+        quotes = client._run(client.batch_quotes(tickers))
         return {sym: q["price"] for sym, q in quotes.items() if q.get("price", 0) > 0}
     except Exception as e:
         logger.error("shadow price lookup failed", error=str(e))
