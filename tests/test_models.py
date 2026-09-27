@@ -1,18 +1,16 @@
 """Tests for domain models."""
 
-import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models.cramer import CramerPick, CramerRecommendation
 from src.models.congress import (
     CongressTrade,
-    CongressMember,
     PoliticalParty,
     Chamber,
     TransactionType,
 )
 from src.models.mood import MarketMood, MoodSentiment, MoodIndicator
-from src.models.earnings import EarningsEvent, EarningsPrediction, EarningsPredictionType
+from src.models.earnings import EarningsEvent
 from src.models.beat_congress import BeatCongressGame, BeatCongressStatus
 
 
@@ -138,7 +136,7 @@ class TestMoodModels:
             weekAgo=50,
             monthAgo=45,
             yearAgo=55,
-            updatedAt=datetime.utcnow(),
+            updatedAt=datetime.now(timezone.utc).replace(tzinfo=None),
             indicators=[
                 MoodIndicator(
                     name="VIX",

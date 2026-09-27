@@ -23,7 +23,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 INDEX_URL = "https://disclosures-clerk.house.gov/public_disc/financial-pdfs/{year}FD.zip"
 PTR_PDF_URL = "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{year}/{doc_id}.pdf"

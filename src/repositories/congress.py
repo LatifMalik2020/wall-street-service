@@ -1,6 +1,6 @@
 """Congress Trading repository."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from decimal import Decimal
 
@@ -124,7 +124,7 @@ class CongressRepository(DynamoDBRepository):
 
     def get_today_count(self) -> int:
         """Get count of trades disclosed today."""
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         items = self._query(
             pk=self.PK_CONGRESS,
             sk_begins_with=f"{self.SK_TRADE_PREFIX}{today}",

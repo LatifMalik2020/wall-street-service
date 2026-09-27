@@ -12,7 +12,6 @@ Public surface mirrors what the stocks handlers consume:
 
 from __future__ import annotations
 
-import asyncio
 import time
 from datetime import date
 from typing import Any, Dict, List, Optional
@@ -146,6 +145,26 @@ async def shares_outstanding(symbol: str) -> Optional[float]:
     ) or _first_present(facts, ["CommonStockSharesOutstanding"], annual=False)
 
 
+def shares_outstanding_record_from_facts(facts: Dict) -> Optional[Dict[str, Any]]:
+    """Latest cover-page dei:EntityCommonStockSharesOutstanding as
+    {"value": shares, "date": as-of date}. This is shares OUTSTANDING, not
+    free float. Multi-class issuers (GOOGL/GOOG) report one value per class in
+    the same filing, so values from the most recent filing are summed."""
+    rows = [v for v in and_first(facts, "dei", "EntityCommonStockSharesOutstanding")
+            if v.get("end") and v.get("val") is not None]
+    if not rows:
+        return None
+    latest = max(rows, key=lambda v: (v.get("filed") or "", v["end"]))
+    same_filing = [v for v in rows
+                   if v.get("accn") == latest.get("accn") and v["end"] == latest["end"]]
+    return {"value": float(sum(v["val"] for v in same_filing)), "date": latest["end"]}
+
+
+async def shares_outstanding_record(symbol: str) -> Optional[Dict[str, Any]]:
+    facts = await _company_facts(symbol)
+    return shares_outstanding_record_from_facts(facts) if facts else None
+
+
 def ratios_from_facts(facts: Dict, symbol: str,
                       price: Optional[float]) -> Dict[str, Any]:
     """Polygon-ratios-shaped dict computed from audited filing values.
@@ -275,7 +294,8 @@ def income_statements_from_facts(facts: Dict, symbol: str,
         row: Dict[str, Any] = {
             "ticker": symbol.upper(),
             "timeframe": timeframe,
-            "fiscal_year": anchor.get("fy"),
+            # Polygon (and the IncomeStatement model) carry fiscal_year as a string.
+            "fiscal_year": str(anchor["fy"]) if anchor.get("fy") is not None else None,
             "fiscal_period": anchor.get("fp"),
             "start_date": start,
             "end_date": end,

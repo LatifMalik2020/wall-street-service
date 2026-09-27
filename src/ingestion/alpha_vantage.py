@@ -1,7 +1,7 @@
 """Alpha Vantage API client for stock prices and earnings."""
 
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict
 
 from src.models.earnings import EarningsEvent
@@ -44,7 +44,7 @@ class AlphaVantageClient:
         """Implement rate limiting for Alpha Vantage free tier."""
         import asyncio
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Reset counter after 24 hours
         if (
@@ -67,7 +67,7 @@ class AlphaVantageClient:
                 await asyncio.sleep(12 - elapsed)
 
         self._request_count += 1
-        self._last_request_time = datetime.utcnow()
+        self._last_request_time = datetime.now(timezone.utc)
 
     async def get_quote(self, symbol: str) -> Optional[Dict]:
         """Get current stock quote."""

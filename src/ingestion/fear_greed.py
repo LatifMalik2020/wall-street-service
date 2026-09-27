@@ -8,6 +8,14 @@ from src.utils.logging import logger
 from src.utils.errors import ExternalAPIError
 
 
+def _score(value, fallback: int) -> int:
+    """CNN scores are floats (e.g. 35.23) — round, don't truncate."""
+    try:
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return fallback
+
+
 class FearGreedClient:
     """Client for CNN Fear & Greed Index.
 
@@ -59,19 +67,15 @@ class FearGreedClient:
         """Parse CNN API response to MarketMood model."""
         # Extract fear/greed scores
         fear_and_greed = data.get("fear_and_greed", {})
-        current_score = int(fear_and_greed.get("score", 50))
-        previous_close = int(fear_and_greed.get("previous_close", 50))
+        current_score = _score(fear_and_greed.get("score"), 50)
+        previous_close = _score(fear_and_greed.get("previous_close"), current_score)
 
-        # Historical comparisons
-        week_ago = int(
-            data.get("fear_and_greed_historical", {}).get("one_week_ago", 50)
-        )
-        month_ago = int(
-            data.get("fear_and_greed_historical", {}).get("one_month_ago", 50)
-        )
-        year_ago = int(
-            data.get("fear_and_greed_historical", {}).get("one_year_ago", 50)
-        )
+        # Historical comparisons live on the same object as previous_1_week /
+        # previous_1_month / previous_1_year (fear_and_greed_historical is the
+        # chart series, not these). Fall back to the current score, never a fake 50.
+        week_ago = _score(fear_and_greed.get("previous_1_week"), current_score)
+        month_ago = _score(fear_and_greed.get("previous_1_month"), current_score)
+        year_ago = _score(fear_and_greed.get("previous_1_year"), current_score)
 
         # Determine sentiment
         sentiment = MoodSentiment.from_index(current_score)

@@ -6,7 +6,6 @@
   GET  /wall-street/shadow/trades          — user's shadow trade feed
 """
 
-import asyncio
 import json
 from typing import Dict, List
 
@@ -28,7 +27,7 @@ def _response(status_code: int, body: dict) -> dict:
 
 
 def _live_prices(tickers: List[str]) -> Dict[str, float]:
-    """Batch quotes via the existing Polygon client; missing quotes just mean
+    """Batch quotes via the Alpaca market-data client; missing quotes just mean
     the engine values those positions at avg cost (honest degradation)."""
     if not tickers:
         return {}

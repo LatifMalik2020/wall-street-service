@@ -1,6 +1,6 @@
 """Earnings Predictions repository."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from decimal import Decimal
 
@@ -28,8 +28,8 @@ class EarningsRepository(DynamoDBRepository):
         self, days_ahead: int = 14, page: int = 1, page_size: int = 20
     ) -> Tuple[List[EarningsEvent], int]:
         """Get upcoming earnings events."""
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        end_date = (datetime.utcnow() + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        end_date = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
 
         items, total = self._query_paginated(
             pk=self.PK_EARNINGS,

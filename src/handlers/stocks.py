@@ -1,14 +1,14 @@
 """Stock fundamentals, technicals, IPO, market status, and SEC filing handlers.
 
-All handlers are synchronous; async Polygon client calls are bridged via
-PolygonMarketClient.sync_* wrapper methods that create a dedicated event loop
-per invocation (safe for Lambda's single-threaded execution model).
+All handlers are synchronous; async market-data client calls (Alpaca prices,
+SEC fundamentals, FINRA short data) are bridged via the client's sync_*
+wrapper methods that create a dedicated event loop per invocation (safe for
+Lambda's single-threaded execution model).
 """
 
 import json
 from typing import Optional
 
-from src.ingestion.polygon_client import PolygonMarketClient
 from src.ingestion.alpaca_market import market_data_client
 from src.models.base import APIResponse
 from src.models.stocks import (
@@ -225,10 +225,9 @@ def get_stock_ratios(symbol: str) -> dict:
 
     GET /wall-street/stocks/{symbol}/ratios
 
-    Polygon's /stocks/financials/v1/ratios requires a paid plan; free-tier
-    keys get 403. Swallow the upstream failure and return 200 with null
-    data so the StockDetail screen can render "no ratios available"
-    instead of blanking the whole view on a 502.
+    Ratios are computed from SEC company facts. Swallow any upstream failure
+    and return 200 with null data so the StockDetail screen can render "no
+    ratios available" instead of blanking the whole view on a 502.
     """
     symbol = _validate_symbol(symbol)
     logger.info("Fetching stock ratios", symbol=symbol)
@@ -237,7 +236,7 @@ def get_stock_ratios(symbol: str) -> dict:
     try:
         raw = client.sync_get_ratios(symbol)
     except Exception as exc:
-        logger.warning("Polygon ratios fetch failed", symbol=symbol, error=str(exc))
+        logger.warning("Ratios fetch failed", symbol=symbol, error=str(exc))
         raw = None
 
     ratios = _build_ratios(raw) if raw else None
@@ -267,12 +266,11 @@ def get_stock_financials(symbol: str, timeframe: str = "annual") -> dict:
     logger.info("Fetching stock financials", symbol=symbol, timeframe=timeframe)
 
     client = market_data_client()
-    # Polygon income statements are paid-plan; free-tier returns 403.
-    # Log and emit an empty list rather than bubbling up as a 502.
+    # SEC-sourced; log and emit an empty list rather than bubbling up as a 502.
     try:
         raw_list = client.sync_get_income_statements(symbol, timeframe=timeframe, limit=4)
     except Exception as exc:
-        logger.warning("Polygon financials fetch failed", symbol=symbol, error=str(exc))
+        logger.warning("Financials fetch failed", symbol=symbol, error=str(exc))
         raw_list = []
 
     statements = [_build_income_statement(r) for r in raw_list]
@@ -295,10 +293,11 @@ def get_stock_short_interest(symbol: str) -> dict:
 
     GET /wall-street/stocks/{symbol}/short-interest
 
-    Polygon's short-interest / short-volume / float endpoints require a
-    paid plan; free-tier keys return 403. Swallow each per-endpoint
-    failure independently so the handler returns an empty section
-    rather than a 500 that blanks the whole StockDetail screen.
+    Short interest: FINRA consolidated short interest (bi-monthly).
+    Short volume: FINRA Reg SHO daily files. Float: no free source, so
+    free_float is null and SEC shares outstanding is reported under its own
+    name. Each section fails independently to an empty value rather than a
+    500 that blanks the whole StockDetail screen.
     """
     symbol = _validate_symbol(symbol)
     logger.info("Fetching short interest", symbol=symbol)
@@ -309,7 +308,7 @@ def get_stock_short_interest(symbol: str) -> dict:
         try:
             return fn(*a, **kw)
         except Exception as exc:
-            logger.warning(f"Polygon call failed for {symbol}: {exc}")
+            logger.warning(f"Short data call failed for {symbol}: {exc}")
             return None
 
     si_raw = _safe(client.sync_get_short_interest, symbol, limit=5) or []
@@ -344,6 +343,7 @@ def get_stock_short_interest(symbol: str) -> dict:
             effective_date=float_raw.get("effective_date"),
             free_float=float_raw.get("free_float"),
             free_float_percent=float_raw.get("free_float_percent"),
+            shares_outstanding=float_raw.get("shares_outstanding"),
         )
         if float_raw
         else None
@@ -442,7 +442,7 @@ def get_market_status() -> dict:
     raw = client.sync_get_market_status()
 
     if raw is None:
-        raise ExternalAPIError("Polygon", "Market status endpoint returned no data")
+        raise ExternalAPIError("MarketData", "Market status returned no data")
 
     status = _build_market_status(raw)
 

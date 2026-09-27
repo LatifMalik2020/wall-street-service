@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -35,9 +35,7 @@ class Settings(BaseSettings):
     cache_ttl_mood: int = 900  # 15 minutes
     cache_ttl_earnings: int = 1800  # 30 minutes
 
-    class Config:
-        env_prefix = ""
-        case_sensitive = False
+    model_config = SettingsConfigDict(env_prefix="", case_sensitive=False)
 
 
 @lru_cache()

@@ -10,7 +10,7 @@ member-profile enrichment path can fill it later. Senate eFD is phase 2.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from src.ingestion import house_ptr, legislators
@@ -74,7 +74,7 @@ def to_congress_trade(filing: "house_ptr.PTRFiling", trade: "house_ptr.PTRTrade"
 def fetch_latest_sync(year: Optional[int] = None,
                       max_filings: int = 40) -> List[CongressTrade]:
     """Trades from the freshest e-filed PTRs (blocking; wrapped async below)."""
-    year = year or datetime.utcnow().year
+    year = year or datetime.now(timezone.utc).year
     filings = [f for f in house_ptr.fetch_index(year) if f.is_efiled]
     try:
         member_index = legislators.load_member_index()

@@ -1,9 +1,23 @@
 """Alpaca market-data client for wall-street-service (Polygon migration).
 
-Subclasses PolygonMarketClient and overrides every PRICE method with Alpaca
-equivalents that emit Polygon-shaped payloads, so all existing handlers keep
-working unchanged. Fundamentals (ratios/financials/short data/filings/IPOs)
-remain inherited from Polygon until the SEC/FINRA slice replaces them.
+Subclasses PolygonMarketClient (for its sync bridge + payload shapes) and
+overrides EVERY data method, so once Alpaca credentials exist no code path
+reaches api.polygon.io -- not even as an error fallback:
+
+  prices / snapshots / movers / bars  -> Alpaca Market Data
+  indicators (SMA/EMA/MACD/RSI)       -> computed locally from Alpaca bars
+  market status                       -> local ET session rule
+  ratios / income statements / filings-> SEC company facts + EDGAR submissions
+  short volume                        -> FINRA Reg SHO daily files
+  short interest                      -> FINRA consolidated short interest API
+  float                               -> no free float source: free_float is
+                                         null; SEC dei shares outstanding is
+                                         reported separately, labelled as such
+  IPO calendar                        -> no free reliable source: empty list
+  earnings calendar                   -> empty (Polygon never supplied it)
+
+Upstream failures degrade to None/[] (or ExternalAPIError where the Polygon
+contract raised), never to invented data.
 
 Indicators (SMA/EMA/MACD/RSI) are computed locally from Alpaca daily bars —
 Polygon's indicator endpoints were just math over aggregates anyway.
@@ -11,7 +25,8 @@ Polygon's indicator endpoints were just math over aggregates anyway.
 Auth: APCA_API_KEY_ID/APCA_API_SECRET_KEY (paper/live keys) or the Broker
 authx client credentials (ALPACA_AUTHX_CLIENT_ID/SECRET) for sandbox testing.
 `market_data_client()` is the factory the handlers use: Alpaca when
-credentials exist, plain Polygon otherwise.
+credentials exist, otherwise the legacy Polygon client (a no-op when
+POLYGON_API_KEY is also absent).
 """
 
 from __future__ import annotations
@@ -24,6 +39,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from src.ingestion.polygon_client import PolygonMarketClient
+from src.utils.errors import ExternalAPIError
 from src.utils.logging import logger
 
 ALPACA_DATA_URL = os.environ.get("ALPACA_DATA_URL", "https://data.alpaca.markets")
@@ -88,6 +104,7 @@ class AlpacaMarketClient(PolygonMarketClient):
     async def close(self):
         if self._alpaca_http is not None:
             await self._alpaca_http.aclose()
+            self._alpaca_http = None
         await super().close()
 
     # -- snapshots --
@@ -139,9 +156,8 @@ class AlpacaMarketClient(PolygonMarketClient):
                 "latestTradingDay": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             }
         except httpx.HTTPError as e:
-            logger.warning("Alpaca quote failed; falling back to Polygon",
-                           symbol=symbol, error=str(e))
-            return await super().get_quote(symbol)
+            logger.warning("Alpaca quote failed", symbol=symbol, error=str(e))
+            raise ExternalAPIError("Alpaca", str(e))
 
     async def batch_quotes(self, symbols: List[str]) -> Dict[str, Dict]:
         if not self.alpaca_enabled:
@@ -149,8 +165,8 @@ class AlpacaMarketClient(PolygonMarketClient):
         try:
             snaps = await self._snapshots(symbols)
         except httpx.HTTPError as e:
-            logger.warning("Alpaca batch quotes failed; falling back", error=str(e))
-            return await super().batch_quotes(symbols)
+            logger.warning("Alpaca batch quotes failed", error=str(e))
+            return {}
         out: Dict[str, Dict] = {}
         for sym in symbols:
             snap = snaps.get(sym.upper())
@@ -176,8 +192,8 @@ class AlpacaMarketClient(PolygonMarketClient):
         try:
             snaps = await self._snapshots(symbols)
         except httpx.HTTPError as e:
-            logger.warning("Alpaca bulk snapshot failed; falling back", error=str(e))
-            return await super().get_bulk_snapshot(symbols)
+            logger.warning("Alpaca bulk snapshot failed", error=str(e))
+            raise ExternalAPIError("Alpaca", str(e))
         return [self._to_polygon_snapshot(sym, snap)
                 for sym, snap in snaps.items() if snap]
 
@@ -189,8 +205,8 @@ class AlpacaMarketClient(PolygonMarketClient):
         try:
             data = await self._alpaca_get("/v1beta1/screener/stocks/movers", {"top": 20})
         except httpx.HTTPError as e:
-            logger.warning("Alpaca movers failed; falling back", error=str(e))
-            return await super().get_market_movers(include_otc)
+            logger.warning("Alpaca movers failed", error=str(e))
+            return [], []
 
         def convert(row: Dict) -> Dict:
             price = row.get("price") or 0
@@ -219,8 +235,7 @@ class AlpacaMarketClient(PolygonMarketClient):
         unit = {"minute": "Min", "hour": "Hour", "day": "Day", "week": "Week"}.get(timespan)
         timeframe = f"{multiplier}{unit}" if unit else None
         if not timeframe:
-            return await super().get_index_aggregates(
-                ticker, multiplier, timespan, from_date, to_date, adjusted, sort, limit)
+            raise ExternalAPIError("Alpaca", f"unsupported timespan {timespan!r}")
         try:
             bars: List[Dict] = []
             page = None
@@ -239,17 +254,15 @@ class AlpacaMarketClient(PolygonMarketClient):
             return [{"t": _ms(b["t"]), "o": b["o"], "h": b["h"], "l": b["l"],
                      "c": b["c"], "v": b["v"]} for b in bars][:limit]
         except httpx.HTTPError as e:
-            logger.warning("Alpaca aggregates failed; falling back",
-                           ticker=ticker, error=str(e))
-            return await super().get_index_aggregates(
-                ticker, multiplier, timespan, from_date, to_date, adjusted, sort, limit)
+            logger.warning("Alpaca aggregates failed", ticker=ticker, error=str(e))
+            raise ExternalAPIError("Alpaca", str(e))
 
     # -- market status (clock) --
 
     async def get_market_status(self) -> Optional[Dict]:
         # Trading-API clock needs trading keys; compute from the calendar-free
         # local rule the app already trusts elsewhere (ET regular session), and
-        # fall back to Polygon only when Alpaca creds are absent entirely.
+        # defer to the key-guarded base only when Alpaca creds are absent.
         if not self.alpaca_enabled:
             return await super().get_market_status()
         from zoneinfo import ZoneInfo
@@ -275,45 +288,79 @@ class AlpacaMarketClient(PolygonMarketClient):
     async def get_ratios(self, symbol: str) -> Optional[Dict]:
         from src.ingestion import sec_facts
         try:
-            quote = await self.get_quote(symbol)
+            try:
+                quote = await self.get_quote(symbol)
+            except ExternalAPIError:
+                quote = None
             price = quote.get("price") if quote else None
-            ratios = await sec_facts.get_ratios(symbol, price)
-            if ratios:
-                return ratios
+            return await sec_facts.get_ratios(symbol, price) or None
         except Exception as e:  # noqa: BLE001
-            logger.warning("SEC ratios failed; falling back to Polygon",
-                           symbol=symbol, error=str(e))
-        return await super().get_ratios(symbol)
+            logger.warning("SEC ratios failed", symbol=symbol, error=str(e))
+            return None
 
     async def get_income_statements(self, symbol: str, timeframe: str = "annual",
                                     limit: int = 4) -> List[Dict]:
         from src.ingestion import sec_facts
         try:
-            rows = await sec_facts.get_income_statements(symbol, timeframe, limit)
-            if rows:
-                return rows
+            return await sec_facts.get_income_statements(symbol, timeframe, limit) or []
         except Exception as e:  # noqa: BLE001
-            logger.warning("SEC income statements failed; falling back",
-                           symbol=symbol, error=str(e))
-        return await super().get_income_statements(symbol, timeframe, limit)
+            logger.warning("SEC income statements failed", symbol=symbol, error=str(e))
+            return []
 
     async def get_filings(self, symbol: str, limit: int = 10) -> List[Dict]:
         from src.ingestion import sec_facts
         try:
-            rows = await sec_facts.get_filings(symbol, limit)
-            if rows:
-                return rows
+            return await sec_facts.get_filings(symbol, limit) or []
         except Exception as e:  # noqa: BLE001
-            logger.warning("EDGAR filings failed; falling back",
-                           symbol=symbol, error=str(e))
-        return await super().get_filings(symbol, limit)
+            logger.warning("EDGAR filings failed", symbol=symbol, error=str(e))
+            return []
+
+    # -- short data from FINRA (primary source, free, keyless) --
 
     async def get_short_volume(self, symbol: str, limit: int = 5) -> List[Dict]:
         from src.ingestion import finra
-        rows = await finra.get_short_volume(symbol, limit)
-        if rows:
-            return rows
-        return await super().get_short_volume(symbol, limit)
+        return await finra.get_short_volume(symbol, limit)
+
+    async def get_short_interest(self, symbol: str, limit: int = 5) -> List[Dict]:
+        from src.ingestion import finra
+        return await finra.get_short_interest(symbol, limit)
+
+    async def get_float(self, symbol: str) -> Optional[Dict]:
+        """No free source publishes true free float. Report SEC cover-page
+        shares outstanding under its own name; free_float stays null."""
+        from src.ingestion import sec_facts
+        try:
+            rec = await sec_facts.shares_outstanding_record(symbol)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("SEC shares outstanding failed", symbol=symbol, error=str(e))
+            return None
+        if not rec:
+            return None
+        return {
+            "ticker": symbol.upper(),
+            "effective_date": rec["date"],
+            "free_float": None,
+            "free_float_percent": None,
+            "shares_outstanding": rec["value"],
+        }
+
+    # -- market-level data with no free replacement --
+
+    async def get_ipos(self, limit: int = 50, days_ahead: int = 30) -> List[Dict]:
+        # Polygon's IPO calendar has no free, reliable equivalent (EDGAR
+        # S-1/424B4 feeds mix in follow-ons/SPACs/debt and carry no ticker or
+        # listing date). Return empty rather than guess.
+        return []
+
+    async def get_earnings_calendar(self, horizon: str = "3month") -> List:
+        # The Polygon implementation always returned [] (it only listed
+        # tickers); keep that outcome without the network call.
+        return []
+
+    async def get_snapshot_all(self) -> List[Dict]:
+        # Unused by handlers; Alpaca has no whole-market snapshot on the free
+        # plan. Never reach Polygon.
+        return []
 
     # -- indicators, computed locally from daily bars --
 
@@ -363,7 +410,7 @@ class AlpacaMarketClient(PolygonMarketClient):
     async def get_macd(self, symbol: str, timespan: str = "day",
                        limit: int = 100) -> List[Dict]:
         if not self.alpaca_enabled:
-            return await super().get_macd(symbol, timespan, limit)
+            return await super().get_macd(symbol, timespan=timespan, limit=limit)
         bars = await self._daily_closes(symbol, days=400)
         closes = [b["c"] for b in bars]
         fast, slow = self._ema_series(closes, 12), self._ema_series(closes, 26)
@@ -415,8 +462,9 @@ class AlpacaMarketClient(PolygonMarketClient):
 
 
 def market_data_client() -> PolygonMarketClient:
-    """The provider seam: Alpaca-backed client when credentials exist,
-    plain Polygon otherwise. Handlers construct through this instead of
+    """The provider seam. Handlers construct through this instead of
     PolygonMarketClient() directly."""
-    client = AlpacaMarketClient()
-    return client if client.alpaca_enabled else PolygonMarketClient()
+    # Always the Alpaca facade: its SEC/FINRA fundamentals are keyless, and
+    # its price methods only defer to the (key-guarded) Polygon base when no
+    # Alpaca credentials are configured at all.
+    return AlpacaMarketClient()

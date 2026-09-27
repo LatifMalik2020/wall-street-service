@@ -7,6 +7,7 @@ FROM public.ecr.aws/lambda/python:3.12
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 # Copy requirements first for better caching
+# (runtime deps only -- test/lint tooling is in requirements-dev.txt and must NOT ship in this image)
 COPY requirements.txt .
 
 # Install dependencies

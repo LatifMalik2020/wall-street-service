@@ -1,4 +1,5 @@
-"""Daily short-sale volume from FINRA Reg SHO files (Polygon migration).
+"""Short data from FINRA (Polygon migration): daily Reg SHO short volume
+and bi-monthly consolidated short interest.
 
 FINRA publishes consolidated short-volume files every trading day at
 cdn.finra.org/equity/regsho/daily/CNMSshvol{YYYYMMDD}.txt — free, keyless,
@@ -72,3 +73,79 @@ async def get_short_volume(symbol: str, limit: int = 5) -> List[Dict]:
     except httpx.HTTPError as e:
         logger.warning("FINRA short volume fetch failed", symbol=sym, error=str(e))
     return out
+
+
+# -- consolidated (bi-monthly) short interest ---------------------------------
+#
+# FINRA's public Query API serves the consolidated equity short-interest
+# dataset (all exchange-listed + OTC symbols, settlement dates mid/end month)
+# keylessly: POST api.finra.org/data/group/otcMarket/name/consolidatedShortInterest.
+# Same data as the cdn.finra.org/equity/otcmarket/biweekly/shrt{YYYYMMDD}.csv
+# files, but filterable by symbol so we never download the 2 MB file.
+
+_SI_URL = ("https://api.finra.org/data/group/otcMarket/name/"
+           "consolidatedShortInterest")
+_SI_LOOKBACK_DAYS = 200  # ~13 settlement dates; enough for limit<=10
+
+
+def short_interest_rows_from_finra(symbol: str, records: List[Dict],
+                                   limit: int) -> List[Dict]:
+    """FINRA API records -> short-interest rows (settlement_date desc) in the
+    shape the stocks handler builds ShortInterestData from."""
+    sym = symbol.upper()
+    by_date: Dict[str, Dict] = {}
+    for r in records:
+        if (r.get("symbolCode") or "").upper() != sym:
+            continue
+        settle = r.get("settlementDate")
+        qty = r.get("currentShortPositionQuantity")
+        if not settle or qty is None:
+            continue
+        by_date[settle] = r  # later records (revisions) win
+    out: List[Dict] = []
+    for settle in sorted(by_date, reverse=True)[:limit]:
+        r = by_date[settle]
+        adv = r.get("averageDailyVolumeQuantity")
+        dtc = r.get("daysToCoverQuantity")
+        if dtc is None and adv:
+            dtc = round(float(r["currentShortPositionQuantity"]) / float(adv), 2)
+        out.append({
+            "ticker": sym,
+            "short_interest": float(r["currentShortPositionQuantity"]),
+            "avg_daily_volume": float(adv) if adv is not None else None,
+            "days_to_cover": float(dtc) if dtc is not None else None,
+            "settlement_date": settle,
+        })
+    return out
+
+
+async def get_short_interest(symbol: str, limit: int = 5) -> List[Dict]:
+    """Most recent `limit` FINRA short-interest settlements for a symbol.
+    Returns [] on any failure (never invented data)."""
+    sym = symbol.upper()
+    today = date.today()
+    body = {
+        "limit": 100,
+        "compareFilters": [
+            {"compareType": "equal", "fieldName": "symbolCode", "fieldValue": sym},
+        ],
+        "dateRangeFilters": [{
+            "fieldName": "settlementDate",
+            "startDate": (today - timedelta(days=_SI_LOOKBACK_DAYS)).isoformat(),
+            "endDate": today.isoformat(),
+        }],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15, headers={
+                **_UA, "Accept": "application/json"}) as client:
+            resp = await client.post(_SI_URL, json=body)
+            if resp.status_code == 204 or not resp.content:
+                return []
+            resp.raise_for_status()
+            records = resp.json()
+    except (httpx.HTTPError, ValueError) as e:
+        logger.warning("FINRA short interest fetch failed", symbol=sym, error=str(e))
+        return []
+    if not isinstance(records, list):
+        return []
+    return short_interest_rows_from_finra(sym, records, limit)

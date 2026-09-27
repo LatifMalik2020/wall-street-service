@@ -5,7 +5,7 @@ Endpoints:
     GET /wall-street/etfs/featured
     GET /wall-street/daily-buzz
 
-Data source: Polygon.io (aggregates, bulk snapshots, market movers).
+Data source: Alpaca market data (bars, snapshots, screener movers).
 AI summary: AWS Bedrock Claude Haiku (falls back to template on failure).
 """
 
@@ -17,8 +17,7 @@ from typing import Optional
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
-from src.ingestion.polygon_client import PolygonMarketClient
-from src.ingestion.alpaca_market import market_data_client
+from src.ingestion.alpaca_market import AlpacaMarketClient, market_data_client
 from src.models.base import APIResponse
 from src.utils.errors import ExternalAPIError, ValidationError
 from src.utils.logging import logger
@@ -27,10 +26,8 @@ from src.utils.logging import logger
 # Constants
 # ---------------------------------------------------------------------------
 
-# Polygon uses "I:" prefix for index tickers
 # Index data via ETF PROXIES (SPY/QQQ/DIA/...) rather than raw index tickers (I:SPX).
-# The Polygon "Stocks Starter" plan covers stocks/ETFs but NOT the Indices add-on
-# (I:SPX 403s). An ETF's % change tracks its index almost exactly.
+# Raw index tickers aren't available on the free market-data plan. An ETF's % change tracks its index almost exactly.
 #
 # `indexLevelFactor` scales the ETF's share price up to the approximate index level
 # the ETF is designed to track (SPY≈S&P/10, DIA≈Dow/100, QQQ≈Nasdaq-100/41,
@@ -39,11 +36,11 @@ from src.utils.logging import logger
 # change is unaffected by the factor and stays exact. The level is a close
 # approximation (ETFs deviate slightly from a perfect ratio), not an official quote.
 _INDEX_TICKER_MAP: dict[str, dict] = {
-    "SPX": {"polygonTicker": "SPY", "name": "S&P 500", "indexLevelFactor": 10.0},
-    "NDX": {"polygonTicker": "QQQ", "name": "Nasdaq-100", "indexLevelFactor": 41.0},
-    "DJI": {"polygonTicker": "DIA", "name": "Dow Jones Industrial Average", "indexLevelFactor": 100.0},
-    "RUT": {"polygonTicker": "IWM", "name": "Russell 2000", "indexLevelFactor": 10.0},
-    "VIX": {"polygonTicker": "VIXY", "name": "CBOE Volatility Index", "indexLevelFactor": 1.0},
+    "SPX": {"proxyTicker": "SPY", "name": "S&P 500", "indexLevelFactor": 10.0},
+    "NDX": {"proxyTicker": "QQQ", "name": "Nasdaq-100", "indexLevelFactor": 41.0},
+    "DJI": {"proxyTicker": "DIA", "name": "Dow Jones Industrial Average", "indexLevelFactor": 100.0},
+    "RUT": {"proxyTicker": "IWM", "name": "Russell 2000", "indexLevelFactor": 10.0},
+    "VIX": {"proxyTicker": "VIXY", "name": "CBOE Volatility Index", "indexLevelFactor": 1.0},
 }
 
 _VALID_PERIODS = frozenset({"5D", "1M", "3M", "YTD", "1Y", "5Y"})
@@ -116,8 +113,8 @@ def _period_to_date_range(period: str) -> tuple[str, str, str, int]:
     Returns:
         from_date: ISO date string (YYYY-MM-DD)
         to_date: ISO date string (YYYY-MM-DD)
-        timespan: Polygon timespan ('minute', 'hour', 'day', 'week')
-        multiplier: Polygon bar multiplier (integer)
+        timespan: bar timespan ('minute', 'hour', 'day', 'week')
+        multiplier: bar multiplier (integer)
     """
     today = date.today()
 
@@ -152,7 +149,7 @@ def _period_to_date_range(period: str) -> tuple[str, str, str, int]:
 
 
 def _normalize_series(bars: list[dict]) -> list[float]:
-    """Convert a list of Polygon aggregate bars to percent-change-from-first values."""
+    """Convert a list of OHLCV aggregate bars to percent-change-from-first values."""
     if not bars:
         return []
 
@@ -170,7 +167,7 @@ def _normalize_series(bars: list[dict]) -> list[float]:
 
 
 def _bar_date_label(bar: dict, timespan: str) -> str:
-    """Return a human-readable date/time label for a Polygon aggregate bar."""
+    """Return a human-readable date/time label for an OHLCV aggregate bar."""
     ts_ms: int = bar.get("t", 0)
     dt = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc)
     if timespan == "hour":
@@ -321,7 +318,7 @@ def _extract_headline(summary: str) -> str:
 
 
 def _format_mover(ticker_snapshot: dict) -> dict | None:
-    """Extract mover fields from a Polygon ticker snapshot.
+    """Extract mover fields from a (Polygon-shaped) ticker snapshot.
 
     Returns None for a malformed snapshot (e.g. non-numeric price) so one bad
     item is skipped rather than dropping the entire movers payload.
@@ -370,7 +367,7 @@ _POPULAR_TICKERS = [
 ]
 
 
-def _attach_sparks(client: PolygonMarketClient, movers: list[dict]) -> None:
+def _attach_sparks(client: AlpacaMarketClient, movers: list[dict]) -> None:
     """Attach a short intraday price series (`spark`) to each mover so the home
     screen can draw a real sparkline. Best-effort per ticker — any failure just
     leaves `spark` absent (iOS renders the row without a line, never faked)."""
@@ -397,7 +394,7 @@ def get_movers() -> dict:
     """Robinhood-style top movers for the home screen.
 
     Computes today's biggest gainers/losers WITHIN a curated universe of popular,
-    liquid stocks (one bulk Polygon snapshot — NO Bedrock), so the feed surfaces
+    liquid stocks (one bulk Alpaca snapshot — NO Bedrock), so the feed surfaces
     recognizable names rather than the market-wide penny-stock pumps that a raw
     "top gainers" query returns.
     """
@@ -505,10 +502,10 @@ def get_indices_comparison(
     # Fetch aggregates for all requested symbols
     all_bars: dict[str, list[dict]] = {}
     for symbol in symbols:
-        polygon_ticker = _INDEX_TICKER_MAP[symbol]["polygonTicker"]
+        proxy_ticker = _INDEX_TICKER_MAP[symbol]["proxyTicker"]
         try:
             bars = client.sync_get_index_aggregates(
-                ticker=polygon_ticker,
+                ticker=proxy_ticker,
                 multiplier=multiplier,
                 timespan=timespan,
                 from_date=from_date,
@@ -516,7 +513,7 @@ def get_indices_comparison(
             )
             all_bars[symbol] = bars
         except Exception as exc:  # noqa: BLE001
-            # Degrade gracefully on ANY failure — Polygon 403 (index data not on the
+            # Degrade gracefully on ANY failure — upstream error (index data not on the
             # plan) AND the "Event loop is closed" RuntimeError from the per-call async
             # client both land here, so a missing index entitlement returns 200 with
             # empty data instead of crashing the whole endpoint with a 500.
@@ -551,7 +548,7 @@ def get_indices_comparison(
         # Override the ETF approximation with the REAL index level + DAILY change
         # from Yahoo Finance (free, no key, same source "The Daily" uses) so the
         # value is accurate AND consistent across every surface. Runs even when
-        # Polygon index data is unavailable (403/empty bars).
+        # Proxy bar data is unavailable (error/empty bars).
         y = _yahoo_index_quote(symbol)
         if y is not None:
             current_value, change_percent = y
@@ -598,11 +595,11 @@ def get_indices_comparison(
 
 
 def get_featured_etfs() -> dict:
-    """Return curated ETF list with live Polygon snapshot data.
+    """Return curated ETF list with live snapshot data.
 
     GET /wall-street/etfs/featured
 
-    Uses the Polygon bulk snapshot endpoint to retrieve all ETFs in one call.
+    Uses the Alpaca bulk snapshot endpoint to retrieve all ETFs in one call.
     """
     logger.info("Fetching featured ETFs", count=len(_ETF_CATALOG))
 
@@ -689,7 +686,7 @@ def get_daily_buzz() -> dict:
 
     GET /wall-street/daily-buzz
 
-    Step 1: Fetch top gainers/losers from Polygon.
+    Step 1: Fetch top gainers/losers (Alpaca screener).
     Step 2: Attempt to get index data for context.
     Step 3: Generate summary via Bedrock; fall back to template on failure.
     """
@@ -714,7 +711,7 @@ def get_daily_buzz() -> dict:
     for symbol in ("SPX", "NDX"):
         try:
             bars = client.sync_get_index_aggregates(
-                ticker=_INDEX_TICKER_MAP[symbol]["polygonTicker"],
+                ticker=_INDEX_TICKER_MAP[symbol]["proxyTicker"],
                 multiplier=1,
                 timespan="day",
                 from_date=(date.today() - timedelta(days=5)).isoformat(),

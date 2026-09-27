@@ -6,7 +6,6 @@ from src.ingestion.house_clerk import HouseClerkClient
 from src.ingestion.quiver_quant import QuiverQuantClient
 from src.ingestion.fmp import FMPClient
 from src.ingestion.fear_greed import FearGreedClient
-from src.ingestion.polygon_client import PolygonMarketClient
 from src.ingestion.alpaca_market import market_data_client
 from src.services.congress import CongressService
 from src.services.mood import MoodService
@@ -30,7 +29,7 @@ class DataIngestionScheduler:
         self.quiver_client = QuiverQuantClient()
         self.house_clerk_client = HouseClerkClient()
         self.fear_greed_client = FearGreedClient()
-        self.polygon_client = market_data_client()
+        self.market_client = market_data_client()
 
         # Initialize services
         self.congress_service = CongressService()
@@ -43,7 +42,7 @@ class DataIngestionScheduler:
         await self.quiver_client.close()
         await self.house_clerk_client.close()
         await self.fear_greed_client.close()
-        await self.polygon_client.close()
+        await self.market_client.close()
 
     async def ingest_congress_trades(self) -> dict:
         """Ingest Congress trading data.
@@ -248,19 +247,18 @@ class DataIngestionScheduler:
         try:
             logger.info("Starting earnings calendar ingestion")
 
-            # Use FMP for earnings calendar data (more reliable for this)
-            # Polygon's earnings data is accessed via financials endpoint
+            # The market-data client has no earnings calendar on any free
+            # plan (the former Polygon call only listed tickers and always
+            # yielded []); the facade returns [] without a network call.
             events = []
-
-            # Try Polygon first
             try:
-                events = await self.polygon_client.get_earnings_calendar(
+                events = await self.market_client.get_earnings_calendar(
                     horizon="3month"
                 )
-            except Exception as poly_err:
+            except Exception as cal_err:
                 logger.warning(
-                    "Polygon earnings fetch returned empty, using FMP",
-                    error=str(poly_err),
+                    "Earnings calendar fetch failed",
+                    error=str(cal_err),
                 )
 
             # Save each event
@@ -297,7 +295,7 @@ class DataIngestionScheduler:
         """Update current stock prices for tracked tickers.
 
         Should be scheduled to run every 5 minutes during market hours.
-        Uses Polygon.io unlimited plan - no rate limit concerns.
+        Uses Alpaca multi-symbol snapshots (one request per batch).
         """
         try:
             logger.info("Starting stock price update")
@@ -306,8 +304,8 @@ class DataIngestionScheduler:
             if not symbols:
                 symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "NVDA", "TSLA"]
 
-            # Fetch quotes from Polygon (unlimited calls)
-            quotes = await self.polygon_client.batch_quotes(symbols)
+            # Fetch quotes from Alpaca snapshots
+            quotes = await self.market_client.batch_quotes(symbols)
 
             logger.info("Stock prices updated", count=len(quotes))
 

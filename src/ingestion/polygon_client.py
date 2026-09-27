@@ -577,9 +577,10 @@ class PolygonMarketClient:
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(coro)
-            if self._client is not None:
-                loop.run_until_complete(self._client.aclose())
-                self._client = None
+            # close() (overridden in subclasses) tears down EVERY cached
+            # transport, not just self._client — AlpacaMarketClient keeps a
+            # second httpx client that must also die with this loop.
+            loop.run_until_complete(self.close())
             return result
         finally:
             loop.close()

@@ -1,7 +1,7 @@
 """Base DynamoDB repository."""
 
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from boto3.dynamodb.conditions import Key
 
@@ -21,7 +21,7 @@ class DynamoDBRepository:
 
     def _now_iso(self) -> str:
         """Get current timestamp in ISO format."""
-        return datetime.utcnow().isoformat() + "Z"
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     def _get_item(self, pk: str, sk: str) -> Optional[Dict[str, Any]]:
         """Get single item by primary key."""

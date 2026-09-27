@@ -7,7 +7,7 @@ from src.models.base import BaseEntity
 
 
 class StockSnapshot(BaseEntity):
-    """Real-time stock price snapshot from Polygon."""
+    """Real-time stock price snapshot (Alpaca market data)."""
 
     symbol: str = Field(..., description="Ticker symbol")
     price: float = Field(..., description="Current price")
@@ -18,7 +18,7 @@ class StockSnapshot(BaseEntity):
 
 
 class StockRatios(BaseEntity):
-    """Financial ratios for a stock (from Polygon /stocks/financials/v1/ratios)."""
+    """Financial ratios for a stock (computed from SEC company facts)."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     date: Optional[str] = Field(None, description="Date the ratios were calculated")
@@ -46,7 +46,7 @@ class StockRatios(BaseEntity):
 
 
 class IncomeStatement(BaseEntity):
-    """Annual or quarterly income statement from Polygon /stocks/financials/v1/income-statements."""
+    """Annual or quarterly income statement (SEC XBRL company facts)."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     timeframe: Optional[str] = Field(None, description="annual | quarterly")
@@ -71,7 +71,7 @@ class IncomeStatement(BaseEntity):
 
 
 class ShortInterestData(BaseEntity):
-    """Short interest record from Polygon /stocks/v1/short-interest."""
+    """Short interest record (FINRA consolidated short interest)."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     short_interest: Optional[float] = Field(
@@ -89,7 +89,7 @@ class ShortInterestData(BaseEntity):
 
 
 class ShortVolumeData(BaseEntity):
-    """Short volume record from Polygon /stocks/v1/short-volume."""
+    """Short volume record (FINRA Reg SHO daily short volume)."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     date: Optional[str] = Field(None, description="Trading date")
@@ -101,7 +101,9 @@ class ShortVolumeData(BaseEntity):
 
 
 class FloatData(BaseEntity):
-    """Float (free-float) data from Polygon /stocks/vX/float."""
+    """Float data. No free source publishes true free float, so free_float /
+    free_float_percent are null; shares_outstanding is the SEC cover-page
+    dei:EntityCommonStockSharesOutstanding figure (NOT float)."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     effective_date: Optional[str] = Field(
@@ -112,6 +114,9 @@ class FloatData(BaseEntity):
     )
     free_float_percent: Optional[float] = Field(
         None, description="Free float as percent of shares outstanding"
+    )
+    shares_outstanding: Optional[float] = Field(
+        None, description="Total shares outstanding (SEC cover page), not float"
     )
 
 
@@ -144,7 +149,7 @@ class TechnicalIndicators(BaseEntity):
 
 
 class IPOEvent(BaseEntity):
-    """Upcoming IPO event from Polygon /vX/reference/ipos."""
+    """Upcoming IPO event (no free source; the calendar is currently empty)."""
 
     ticker: Optional[str] = Field(None, description="Ticker symbol")
     issuer_name: Optional[str] = Field(None, description="Company name")
@@ -175,7 +180,7 @@ class ExchangeStatus(BaseEntity):
 
 
 class MarketStatus(BaseEntity):
-    """Current market status from Polygon /v1/marketstatus/now."""
+    """Current market status (local US-equities session rule)."""
 
     market: Optional[str] = Field(None, description="Overall market status string")
     afterHours: Optional[bool] = Field(
@@ -191,7 +196,7 @@ class MarketStatus(BaseEntity):
 
 
 class SECFiling(BaseEntity):
-    """SEC filing record from Polygon /stocks/filings/vX/index."""
+    """SEC filing record (EDGAR submissions)."""
 
     accession_number: Optional[str] = Field(None, description="SEC accession number")
     cik: Optional[str] = Field(None, description="SEC CIK number")

@@ -1,6 +1,6 @@
 """Base models and utilities."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 
@@ -35,5 +35,5 @@ class APIResponse(BaseModel):
 
     def __init__(self, **data):
         if "timestamp" not in data or not data["timestamp"]:
-            data["timestamp"] = datetime.utcnow().isoformat() + "Z"
+            data["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         super().__init__(**data)
