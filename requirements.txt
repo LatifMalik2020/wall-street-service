@@ -18,3 +18,6 @@ structlog>=24.1.0
 
 # PDF parsing (House PTR ingestion, src/ingestion/house_ptr.py)
 pypdf>=6.0.0,<7
+
+# transitive via botocore/requests; 2.8.0 fixes PYSEC-2026-4175/-4176/-4177
+urllib3>=2.8.0,<3

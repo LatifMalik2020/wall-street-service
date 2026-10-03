@@ -1,6 +1,6 @@
 """Market Mood repository."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from decimal import Decimal
 
@@ -217,11 +217,11 @@ class MoodRepository(DynamoDBRepository):
             updated_at = (
                 datetime.fromisoformat(raw_updated.replace("Z", "+00:00"))
                 if raw_updated
-                else datetime.utcnow()
+                else datetime.now(timezone.utc).replace(tzinfo=None)
             )
         except (ValueError, AttributeError):
             logger.warning("Unparseable mood updatedAt, using now", value=raw_updated)
-            updated_at = datetime.utcnow()
+            updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         return MarketMood(
             fearGreedIndex=int(item.get("fearGreedIndex", 50)),
@@ -247,10 +247,10 @@ class MoodRepository(DynamoDBRepository):
             predictedSentiment=MoodSentiment(item.get("predictedSentiment", "NEUTRAL")),
             predictedIndex=item.get("predictedIndex"),
             targetDate=datetime.fromisoformat(
-                item.get("targetDate", datetime.utcnow().isoformat())
+                item.get("targetDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             createdAt=datetime.fromisoformat(
-                item.get("createdAt", datetime.utcnow().isoformat())
+                item.get("createdAt", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             actualSentiment=(
                 MoodSentiment(item["actualSentiment"])

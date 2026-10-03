@@ -138,7 +138,7 @@ async def _process_beat_congress_games() -> dict:
 
 async def _process_mood_predictions(target_date: str = None) -> dict:
     """Process mood predictions for a date."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     service = MoodService()
 
@@ -146,7 +146,7 @@ async def _process_mood_predictions(target_date: str = None) -> dict:
     if target_date:
         date = datetime.fromisoformat(target_date)
     else:
-        date = datetime.utcnow() - timedelta(days=7)
+        date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
 
     count = service.resolve_predictions(date)
     return {

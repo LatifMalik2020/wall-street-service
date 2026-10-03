@@ -1,7 +1,7 @@
 """Market Mood service."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from src.models.mood import (
@@ -35,7 +35,7 @@ class MoodService:
                 weekAgo=50,
                 monthAgo=50,
                 yearAgo=50,
-                updatedAt=datetime.utcnow(),
+                updatedAt=datetime.now(timezone.utc).replace(tzinfo=None),
                 indicators=[],
             )
         return mood
@@ -69,7 +69,7 @@ class MoodService:
             )
 
         # Target date is 7 days from now
-        target_date = datetime.utcnow() + timedelta(days=7)
+        target_date = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
         target_date = target_date.replace(
             hour=16, minute=0, second=0, microsecond=0
         )  # Market close
@@ -89,7 +89,7 @@ class MoodService:
             predictedSentiment=sentiment,
             predictedIndex=predicted_index,
             targetDate=target_date,
-            createdAt=datetime.utcnow(),
+            createdAt=datetime.now(timezone.utc).replace(tzinfo=None),
         )
 
         self.repo.save_prediction(prediction)

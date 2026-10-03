@@ -1,7 +1,7 @@
 """CNN Fear & Greed Index API client."""
 
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models.mood import MarketMood, MoodSentiment, MoodIndicator
 from src.utils.logging import logger
@@ -90,7 +90,7 @@ class FearGreedClient:
             weekAgo=week_ago,
             monthAgo=month_ago,
             yearAgo=year_ago,
-            updatedAt=datetime.utcnow(),
+            updatedAt=datetime.now(timezone.utc).replace(tzinfo=None),
             indicators=indicators,
         )
 

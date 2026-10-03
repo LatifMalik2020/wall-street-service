@@ -1,6 +1,6 @@
 """Beat Congress Game repository."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from decimal import Decimal
 import uuid
@@ -78,7 +78,7 @@ class BeatCongressRepository(DynamoDBRepository):
     ) -> BeatCongressGame:
         """Create a new Beat Congress game."""
         game_id = str(uuid.uuid4())[:8]
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         end_date = now + timedelta(days=duration_days)
 
         game = BeatCongressGame(
@@ -191,7 +191,7 @@ class BeatCongressRepository(DynamoDBRepository):
 
     def get_active_games_to_process(self) -> List[BeatCongressGame]:
         """Get all active games that have ended (for batch processing)."""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         items = self._query(
             pk="ACTIVE_GAMES",
             index_name="GSI1",
@@ -292,10 +292,10 @@ class BeatCongressRepository(DynamoDBRepository):
             congressMemberParty=PoliticalParty(item.get("congressMemberParty", "D")),
             congressMemberChamber=Chamber(item.get("congressMemberChamber", "House")),
             startDate=datetime.fromisoformat(
-                item.get("startDate", datetime.utcnow().isoformat())
+                item.get("startDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             endDate=datetime.fromisoformat(
-                item.get("endDate", datetime.utcnow().isoformat())
+                item.get("endDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             durationDays=int(item.get("durationDays", 30)),
             status=BeatCongressStatus(item.get("status", "ACTIVE")),

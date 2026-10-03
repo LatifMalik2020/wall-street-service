@@ -64,7 +64,7 @@ class EarningsRepository(DynamoDBRepository):
             limit=100,
         )
 
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc).replace(tzinfo=None)
         for item in items:
             event = self._item_to_event(item)
             if event.ticker.upper() == ticker.upper() and event.earningsDate >= today:
@@ -283,7 +283,7 @@ class EarningsRepository(DynamoDBRepository):
             ticker=item.get("ticker", ""),
             companyName=item.get("companyName", ""),
             earningsDate=datetime.fromisoformat(
-                item.get("earningsDate", datetime.utcnow().isoformat())
+                item.get("earningsDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             earningsTime=item.get("earningsTime", "After"),
             estimatedEPS=(
@@ -314,7 +314,7 @@ class EarningsRepository(DynamoDBRepository):
             ticker=item.get("ticker", ""),
             prediction=EarningsPredictionType(item.get("prediction", "MEET")),
             createdAt=datetime.fromisoformat(
-                item.get("createdAt", datetime.utcnow().isoformat())
+                item.get("createdAt", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             isCorrect=item.get("isCorrect"),
             xpAwarded=int(item.get("xpAwarded", 0)),

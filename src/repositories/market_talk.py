@@ -1,6 +1,6 @@
 """Market Talk repository."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 import uuid
 
@@ -168,7 +168,7 @@ class MarketTalkRepository(DynamoDBRepository):
             title=title,
             topic=topic,
             messages=[],
-            createdAt=datetime.utcnow(),
+            createdAt=datetime.now(timezone.utc).replace(tzinfo=None),
             isLive=is_live,
             tickersMentioned=tickers or [],
         )
@@ -184,7 +184,7 @@ class MarketTalkRepository(DynamoDBRepository):
                     host=MarketTalkHost(msg_data.get("host", "MIKE")),
                     text=msg_data.get("text", ""),
                     timestamp=datetime.fromisoformat(
-                        msg_data.get("timestamp", datetime.utcnow().isoformat())
+                        msg_data.get("timestamp", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
                     ),
                     ticker=msg_data.get("ticker"),
                     sentiment=msg_data.get("sentiment"),
@@ -197,7 +197,7 @@ class MarketTalkRepository(DynamoDBRepository):
             topic=item.get("topic", ""),
             messages=messages,
             createdAt=datetime.fromisoformat(
-                item.get("createdAt", datetime.utcnow().isoformat())
+                item.get("createdAt", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
             ),
             isLive=item.get("isLive", False),
             tickersMentioned=item.get("tickersMentioned", []),

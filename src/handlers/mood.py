@@ -1,7 +1,7 @@
 """Market Mood API handlers."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from src.services.mood import MoodService
@@ -39,7 +39,7 @@ def _neutral_mood() -> MarketMood:
         weekAgo=50,
         monthAgo=50,
         yearAgo=50,
-        updatedAt=datetime.utcnow(),
+        updatedAt=datetime.now(timezone.utc).replace(tzinfo=None),
         indicators=[],
     )
 

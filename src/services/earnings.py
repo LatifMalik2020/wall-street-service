@@ -1,6 +1,6 @@
 """Earnings Predictions service."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 
 from src.models.earnings import (
@@ -104,7 +104,7 @@ class EarningsService:
             eventId=event.id,
             ticker=event.ticker,
             prediction=pred_type,
-            createdAt=datetime.utcnow(),
+            createdAt=datetime.now(timezone.utc).replace(tzinfo=None),
         )
 
         self.repo.save_prediction(prediction)

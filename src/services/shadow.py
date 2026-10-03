@@ -70,7 +70,7 @@ class ShadowService:
             filed = profile.get("latestFilingDate", "")
             out.append({
                 "slug": slug, "cik": cik,
-                "name": FILER_NAMES.get(cik, slug.title()),
+                "name": FILER_NAMES.get(int(cik), slug.title()),
                 "latestFilingDate": filed,
                 "stale": _is_stale(filed),
             })
@@ -78,7 +78,7 @@ class ShadowService:
 
     # -- ingest (EventBridge job; network via edgar/cusip modules) --
 
-    def refresh_filer(self, cik: int) -> Dict:
+    def refresh_filer(self, cik: str) -> Dict:
         """Check EDGAR for a new 13F; persist a target-weight snapshot if so."""
         from src.ingestion import cusip_map, edgar_13f
         filings = edgar_13f.latest_13f_accessions(cik, count=1)
@@ -99,7 +99,7 @@ class ShadowService:
                  "value_usd": h.value_usd, "provenance": accession}
                 for h in candidates]
         targets = shadow_engine.target_weights_from_holdings(rows)
-        name = FILER_NAMES.get(cik, str(cik))
+        name = FILER_NAMES.get(int(cik), str(cik))
         self._repo.put_filer_snapshot(
             cik, name, accession, filed,
             [{"ticker": t.ticker, "weight": t.weight, "provenance": t.provenance}
@@ -165,7 +165,7 @@ class ShadowService:
             })
         return {
             "cik": cik,
-            "filerName": FILER_NAMES.get(cik, str(cik)),
+            "filerName": FILER_NAMES.get(int(cik), str(cik)),
             "allocatedCash": round(portfolio.allocated_cash, 2),
             "cash": round(portfolio.cash, 2),
             "marketValue": round(portfolio.market_value(prices), 2),
@@ -177,7 +177,7 @@ class ShadowService:
         }
 
 
-def shadow_engine_filers() -> Dict[str, int]:
+def shadow_engine_filers() -> Dict[str, str]:
     from src.ingestion.edgar_13f import KNOWN_FILERS
     return KNOWN_FILERS
 

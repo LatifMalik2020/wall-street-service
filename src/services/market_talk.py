@@ -1,6 +1,6 @@
 """Market Talk AI Podcast service."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import random
 
@@ -151,7 +151,7 @@ class MarketTalkService:
             "I'm not saying sell, but the valuation looks stretched to me.",
         ]
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         for i in range(count):
             host = hosts[i % 2]
@@ -213,7 +213,7 @@ class MarketTalkService:
         message = MarketTalkMessage(
             host=host_enum,
             text=text,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
             ticker=ticker,
             sentiment=sentiment,
         )

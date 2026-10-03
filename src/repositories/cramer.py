@@ -1,10 +1,11 @@
 """Cramer Tracker repository."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from decimal import Decimal
 
 from src.models.cramer import CramerPick, CramerRecommendation, CramerStats
+from src.models.base import enum_value
 from src.repositories.base import DynamoDBRepository
 from src.utils.logging import logger
 
@@ -71,7 +72,7 @@ class CramerRepository(DynamoDBRepository):
             "id": pick.id,
             "ticker": pick.ticker,
             "companyName": pick.companyName,
-            "recommendation": pick.recommendation.value,
+            "recommendation": enum_value(pick.recommendation),
             "priceAtPick": Decimal(str(pick.priceAtPick)),
             "currentPrice": Decimal(str(pick.currentPrice)),
             "returnPercent": Decimal(str(pick.returnPercent)),
@@ -129,7 +130,7 @@ class CramerRepository(DynamoDBRepository):
         )
 
         # Filter to date range
-        cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
         recent_picks = []
         for item in items:
             pick = self._item_to_pick(item)

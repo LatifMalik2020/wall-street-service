@@ -1,6 +1,6 @@
 """Beat Congress Game models."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
 from pydantic import BaseModel, Field
@@ -51,7 +51,7 @@ class BeatCongressGame(BaseEntity):
     @property
     def days_remaining(self) -> int:
         """Days remaining in the game."""
-        remaining = (self.endDate - datetime.utcnow()).days
+        remaining = (self.endDate - datetime.now(timezone.utc).replace(tzinfo=None)).days
         return max(0, remaining)
 
 

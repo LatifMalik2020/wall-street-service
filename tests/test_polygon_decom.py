@@ -4,7 +4,6 @@ even when the primary source errors. Plus offline tests for the FINRA short
 interest and SEC shares-outstanding parsers."""
 
 import asyncio
-import os
 import pathlib
 import sys
 from unittest import mock

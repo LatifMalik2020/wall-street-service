@@ -173,7 +173,7 @@ class AlphaVantageClient:
                     continue
 
                 # Skip past events
-                if report_date < datetime.utcnow():
+                if report_date < datetime.now(timezone.utc).replace(tzinfo=None):
                     continue
 
                 # Parse estimate

@@ -12,6 +12,7 @@ from src.models.congress import (
     Chamber,
     TransactionType,
 )
+from src.models.base import enum_value
 from src.repositories.base import DynamoDBRepository
 from src.utils.logging import logger
 from src.utils.normalize import normalize_member_id
@@ -143,7 +144,7 @@ class CongressRepository(DynamoDBRepository):
         best_trade = None
         best_return = float("-inf")
 
-        cutoff = datetime.utcnow() - timedelta(days=days_back)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
 
         for item in items:
             trade = self._item_to_trade(item)
@@ -168,12 +169,12 @@ class CongressRepository(DynamoDBRepository):
             "id": trade.id,
             "memberId": trade.memberId,
             "memberName": trade.memberName,
-            "party": trade.party.value,
-            "chamber": trade.chamber.value,
+            "party": enum_value(trade.party),
+            "chamber": enum_value(trade.chamber),
             "state": trade.state,
             "ticker": trade.ticker,
             "companyName": trade.companyName,
-            "transactionType": trade.transactionType.value,
+            "transactionType": enum_value(trade.transactionType),
             "transactionDate": trade.transactionDate.isoformat(),
             "disclosureDate": trade.disclosureDate.isoformat(),
             "amountRangeLow": trade.amountRangeLow,
@@ -239,8 +240,8 @@ class CongressRepository(DynamoDBRepository):
             "SK": f"MEMBER#{member.id}",
             "id": member.id,
             "name": member.name,
-            "party": member.party.value,
-            "chamber": member.chamber.value,
+            "party": enum_value(member.party),
+            "chamber": enum_value(member.chamber),
             "state": member.state,
             "district": member.district,
             "imageUrl": member.imageUrl,

@@ -1,7 +1,7 @@
 """QuiverQuant API client for Congress trading data."""
 
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from src.models.congress import (
@@ -64,7 +64,7 @@ class QuiverQuantClient:
             data = response.json()
 
             trades = []
-            cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+            cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
 
             for item in data:
                 try:
