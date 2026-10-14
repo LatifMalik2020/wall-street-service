@@ -107,7 +107,7 @@ class AlphaVantageClient:
 
         except httpx.HTTPError as e:
             logger.error("Alpha Vantage quote error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Alpha Vantage", str(e))
+            raise ExternalAPIError("Alpha Vantage", str(e)) from e
 
     async def get_earnings_calendar(
         self, horizon: str = "3month"
@@ -143,7 +143,7 @@ class AlphaVantageClient:
 
         except httpx.HTTPError as e:
             logger.error("Alpha Vantage earnings error", error=str(e))
-            raise ExternalAPIError("Alpha Vantage", str(e))
+            raise ExternalAPIError("Alpha Vantage", str(e)) from e
 
     def _parse_earnings_csv(self, csv_data: str) -> List[EarningsEvent]:
         """Parse Alpha Vantage earnings CSV response."""

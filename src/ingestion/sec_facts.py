@@ -25,7 +25,7 @@ _FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json"
 _UA = {"User-Agent": "TradeStreak data research contact@tradestreak.net"}
 
 _cik_by_ticker: Optional[Dict[str, int]] = None
-_facts_cache: Dict[str, tuple] = {}          # symbol -> (fetched_at, facts)
+_facts_cache: Dict[str, tuple] = {}  # symbol -> (fetched_at, facts)
 _FACTS_TTL = 6 * 3600
 
 
@@ -36,8 +36,9 @@ async def _ticker_to_cik(symbol: str) -> Optional[int]:
             resp = await c.get(_TICKERS_URL)
             resp.raise_for_status()
             raw = resp.json()
-        _cik_by_ticker = {row["ticker"].upper(): int(row["cik_str"])
-                          for row in raw.values()}
+        _cik_by_ticker = {
+            row["ticker"].upper(): int(row["cik_str"]) for row in raw.values()
+        }
     sym = symbol.upper()
     # SEC uses dashes for share classes where brokers use dots (BRK.B -> BRK-B).
     return _cik_by_ticker.get(sym) or _cik_by_ticker.get(sym.replace(".", "-"))
@@ -62,8 +63,7 @@ async def _company_facts(symbol: str) -> Optional[Dict]:
 
 def and_first(facts: Dict, taxonomy: str, tag: str) -> List[Dict]:
     """Values list from the first (usually only) unit of a tag."""
-    units = (facts.get("facts", {}).get(taxonomy, {}).get(tag, {})
-             .get("units", {}) or {})
+    units = facts.get("facts", {}).get(taxonomy, {}).get(tag, {}).get("units", {}) or {}
     for _, values in units.items():
         return values
     return []
@@ -88,7 +88,9 @@ def _latest_annual(facts: Dict, tag: str, taxonomy: str = "us-gaap") -> Optional
     return float(best["val"]) if best else None
 
 
-def _latest_instant(facts: Dict, tag: str, taxonomy: str = "us-gaap") -> Optional[float]:
+def _latest_instant(
+    facts: Dict, tag: str, taxonomy: str = "us-gaap"
+) -> Optional[float]:
     """Most recent point-in-time (balance-sheet style) value for a tag."""
     best = None
     for v in and_first(facts, taxonomy, tag):
@@ -99,8 +101,9 @@ def _latest_instant(facts: Dict, tag: str, taxonomy: str = "us-gaap") -> Optiona
     return float(best["val"]) if best else None
 
 
-def _first_present(facts: Dict, tags: List[str],
-                   annual: bool = True, taxonomy: str = "us-gaap") -> Optional[float]:
+def _first_present(
+    facts: Dict, tags: List[str], annual: bool = True, taxonomy: str = "us-gaap"
+) -> Optional[float]:
     for tag in tags:
         val = (_latest_annual if annual else _latest_instant)(facts, tag, taxonomy)
         if val is not None:
@@ -141,7 +144,8 @@ async def shares_outstanding(symbol: str) -> Optional[float]:
     return _first_present(
         facts,
         ["EntityCommonStockSharesOutstanding"],
-        annual=False, taxonomy="dei",
+        annual=False,
+        taxonomy="dei",
     ) or _first_present(facts, ["CommonStockSharesOutstanding"], annual=False)
 
 
@@ -150,13 +154,19 @@ def shares_outstanding_record_from_facts(facts: Dict) -> Optional[Dict[str, Any]
     {"value": shares, "date": as-of date}. This is shares OUTSTANDING, not
     free float. Multi-class issuers (GOOGL/GOOG) report one value per class in
     the same filing, so values from the most recent filing are summed."""
-    rows = [v for v in and_first(facts, "dei", "EntityCommonStockSharesOutstanding")
-            if v.get("end") and v.get("val") is not None]
+    rows = [
+        v
+        for v in and_first(facts, "dei", "EntityCommonStockSharesOutstanding")
+        if v.get("end") and v.get("val") is not None
+    ]
     if not rows:
         return None
     latest = max(rows, key=lambda v: (v.get("filed") or "", v["end"]))
-    same_filing = [v for v in rows
-                   if v.get("accn") == latest.get("accn") and v["end"] == latest["end"]]
+    same_filing = [
+        v
+        for v in rows
+        if v.get("accn") == latest.get("accn") and v["end"] == latest["end"]
+    ]
     return {"value": float(sum(v["val"] for v in same_filing)), "date": latest["end"]}
 
 
@@ -165,42 +175,59 @@ async def shares_outstanding_record(symbol: str) -> Optional[Dict[str, Any]]:
     return shares_outstanding_record_from_facts(facts) if facts else None
 
 
-def ratios_from_facts(facts: Dict, symbol: str,
-                      price: Optional[float]) -> Dict[str, Any]:
+def ratios_from_facts(
+    facts: Dict, symbol: str, price: Optional[float]
+) -> Dict[str, Any]:
     """Polygon-ratios-shaped dict computed from audited filing values.
     Any component that can't be sourced comes back None (never fabricated)."""
     # EPS resolution chain: trailing 4 quarters -> latest annual tag ->
     # computed NetIncome / weighted diluted shares (filers like KO tag EPS
     # only in their custom namespace, but these components are standard).
-    eps = trailing_eps_from_facts(facts) or _latest_annual(facts, "EarningsPerShareDiluted")
+    eps = trailing_eps_from_facts(facts) or _latest_annual(
+        facts, "EarningsPerShareDiluted"
+    )
     if eps is None:
         ni = _first_present(facts, ["NetIncomeLoss"])
         wshares = _first_present(
-            facts, ["WeightedAverageNumberOfDilutedSharesOutstanding",
-                    "WeightedAverageNumberOfSharesOutstandingBasic"])
+            facts,
+            [
+                "WeightedAverageNumberOfDilutedSharesOutstanding",
+                "WeightedAverageNumberOfSharesOutstandingBasic",
+            ],
+        )
         if ni is not None and wshares:
             eps = round(ni / wshares, 4)
-    shares = (_first_present(facts, ["EntityCommonStockSharesOutstanding"],
-                             annual=False, taxonomy="dei")
-              or _first_present(facts, ["CommonStockSharesOutstanding"], annual=False))
-    revenue = _first_present(facts, [
-        "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues",
-        "SalesRevenueNet"])
+    shares = _first_present(
+        facts, ["EntityCommonStockSharesOutstanding"], annual=False, taxonomy="dei"
+    ) or _first_present(facts, ["CommonStockSharesOutstanding"], annual=False)
+    revenue = _first_present(
+        facts,
+        [
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "Revenues",
+            "SalesRevenueNet",
+        ],
+    )
     net_income = _first_present(facts, ["NetIncomeLoss"])
     equity = _first_present(
-        facts, ["StockholdersEquity",
-                "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
-        annual=False)
+        facts,
+        [
+            "StockholdersEquity",
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+        ],
+        annual=False,
+    )
     assets = _first_present(facts, ["Assets"], annual=False)
     current_assets = _first_present(facts, ["AssetsCurrent"], annual=False)
     current_liabilities = _first_present(facts, ["LiabilitiesCurrent"], annual=False)
     long_term_debt = _first_present(
-        facts, ["LongTermDebtNoncurrent", "LongTermDebt"], annual=False)
+        facts, ["LongTermDebtNoncurrent", "LongTermDebt"], annual=False
+    )
     op_cash = _first_present(facts, ["NetCashProvidedByUsedInOperatingActivities"])
-    capex = _first_present(facts, [
-        "PaymentsToAcquirePropertyPlantAndEquipment"])
-    dividends = _first_present(facts, ["PaymentsOfDividendsCommonStock",
-                                       "PaymentsOfDividends"])
+    capex = _first_present(facts, ["PaymentsToAcquirePropertyPlantAndEquipment"])
+    dividends = _first_present(
+        facts, ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"]
+    )
 
     market_cap = price * shares if price and shares else None
 
@@ -225,7 +252,9 @@ def ratios_from_facts(facts: Dict, symbol: str,
         "quick": None,
         "cash": None,
         "ev_to_ebitda": None,
-        "free_cash_flow": (op_cash - capex) if op_cash is not None and capex is not None else None,
+        "free_cash_flow": (
+            (op_cash - capex) if op_cash is not None and capex is not None else None
+        ),
         "average_volume": None,
     }
 
@@ -244,8 +273,11 @@ async def get_ratios(symbol: str, price: Optional[float]) -> Optional[Dict]:
 # -- income statements ------------------------------------------------------
 
 _IS_TAGS = {
-    "revenues": ["RevenueFromContractWithCustomerExcludingAssessedTax",
-                 "Revenues", "SalesRevenueNet"],
+    "revenues": [
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "Revenues",
+        "SalesRevenueNet",
+    ],
     "operating_income": ["OperatingIncomeLoss"],
     "net_income_loss": ["NetIncomeLoss"],
     "earnings_per_share_basic": ["EarningsPerShareBasic"],
@@ -257,9 +289,9 @@ _IS_TAGS = {
 }
 
 
-def income_statements_from_facts(facts: Dict, symbol: str,
-                                 timeframe: str = "annual",
-                                 limit: int = 4) -> List[Dict]:
+def income_statements_from_facts(
+    facts: Dict, symbol: str, timeframe: str = "annual", limit: int = 4
+) -> List[Dict]:
     """Income-statement rows shaped like Polygon's, assembled from XBRL
     duration frames (annual = ~12-month 10-K frames, quarterly = ~3-month)."""
     lo, hi = (300, 400) if timeframe == "annual" else (80, 100)
@@ -284,13 +316,17 @@ def income_statements_from_facts(facts: Dict, symbol: str,
 
     periods = sorted(
         {k for c in per_field.values() for k in c},
-        key=lambda k: k[1], reverse=True,
+        key=lambda k: k[1],
+        reverse=True,
     )[:limit]
 
     rows = []
     for start, end in periods:
-        anchor = per_field["net_income_loss"].get((start, end)) or \
-                 per_field["revenues"].get((start, end)) or {}
+        anchor = (
+            per_field["net_income_loss"].get((start, end))
+            or per_field["revenues"].get((start, end))
+            or {}
+        )
         row: Dict[str, Any] = {
             "ticker": symbol.upper(),
             "timeframe": timeframe,
@@ -308,8 +344,9 @@ def income_statements_from_facts(facts: Dict, symbol: str,
     return rows
 
 
-async def get_income_statements(symbol: str, timeframe: str = "annual",
-                                limit: int = 4) -> List[Dict]:
+async def get_income_statements(
+    symbol: str, timeframe: str = "annual", limit: int = 4
+) -> List[Dict]:
     facts = await _company_facts(symbol)
     if not facts:
         return []
@@ -342,18 +379,25 @@ async def get_filings(symbol: str, limit: int = 10) -> List[Dict]:
     for i in range(min(len(forms), len(dates), len(accs))):
         acc = accs[i]
         doc = docs[i] if i < len(docs) else ""
-        url = (f"https://www.sec.gov/Archives/edgar/data/{cik}/"
-               f"{acc.replace('-', '')}/{doc}") if doc else \
-              f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik:010d}"
-        out.append({
-            "accession_number": acc,
-            "cik": str(cik),
-            "ticker": symbol.upper(),
-            "issuer_name": name,
-            "filing_date": dates[i],
-            "form_type": forms[i],
-            "filing_url": url,
-        })
+        url = (
+            (
+                f"https://www.sec.gov/Archives/edgar/data/{cik}/"
+                f"{acc.replace('-', '')}/{doc}"
+            )
+            if doc
+            else f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik:010d}"
+        )
+        out.append(
+            {
+                "accession_number": acc,
+                "cik": str(cik),
+                "ticker": symbol.upper(),
+                "issuer_name": name,
+                "filing_date": dates[i],
+                "form_type": forms[i],
+                "filing_url": url,
+            }
+        )
         if len(out) >= limit:
             break
     return out

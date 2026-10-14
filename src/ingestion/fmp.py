@@ -99,7 +99,7 @@ class FMPClient:
 
         except httpx.HTTPError as e:
             logger.error("FMP API error", endpoint=endpoint, error=str(e))
-            raise ExternalAPIError("FMP", str(e))
+            raise ExternalAPIError("FMP", str(e)) from e
 
     async def _fetch_trades(
         self, endpoint: str, chamber: Chamber, limit: int
@@ -132,7 +132,7 @@ class FMPClient:
 
         except httpx.HTTPError as e:
             logger.error("FMP API error", endpoint=endpoint, error=str(e))
-            raise ExternalAPIError("FMP", str(e))
+            raise ExternalAPIError("FMP", str(e)) from e
 
     def _parse_fmp_trade(
         self, item: dict, default_chamber: Chamber

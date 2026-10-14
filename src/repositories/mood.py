@@ -247,10 +247,16 @@ class MoodRepository(DynamoDBRepository):
             predictedSentiment=MoodSentiment(item.get("predictedSentiment", "NEUTRAL")),
             predictedIndex=item.get("predictedIndex"),
             targetDate=datetime.fromisoformat(
-                item.get("targetDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "targetDate",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             createdAt=datetime.fromisoformat(
-                item.get("createdAt", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "createdAt",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             actualSentiment=(
                 MoodSentiment(item["actualSentiment"])

@@ -32,8 +32,8 @@ _BASE_ARCHIVES = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc_nodash}"
 
 # A few well-known filers for the shadow roster (CIKs are public identifiers).
 KNOWN_FILERS = {
-    "berkshire": "1067983",     # Berkshire Hathaway (Buffett)
-    "scion": "1649339",         # Scion Asset Management (Burry)
+    "berkshire": "1067983",  # Berkshire Hathaway (Buffett)
+    "scion": "1649339",  # Scion Asset Management (Burry)
     "pershing-square": "1336528",
     "appaloosa": "1656456",
     "bridgewater": "1350694",
@@ -50,7 +50,7 @@ class Holding:
 
 @dataclass
 class HoldingChange:
-    kind: str          # opened | exited | increased | decreased
+    kind: str  # opened | exited | increased | decreased
     issuer: str
     cusip: str
     shares_before: float
@@ -83,9 +83,12 @@ def latest_13f_accessions(cik: str, count: int = 2) -> List[Dict[str, str]]:
     data = json.loads(_get(_BASE_SUBMISSIONS.format(cik10=cik10)))
     recent = data.get("filings", {}).get("recent", {})
     out: List[Dict[str, str]] = []
-    for form, date, acc in zip(recent.get("form", []),
-                               recent.get("filingDate", []),
-                               recent.get("accessionNumber", [])):
+    for form, date, acc in zip(
+        recent.get("form", []),
+        recent.get("filingDate", []),
+        recent.get("accessionNumber", []),
+        strict=False,
+    ):
         if form == "13F-HR":  # originals only; amendments handled later
             out.append({"accession": acc, "filingDate": date})
             if len(out) >= count:
@@ -96,14 +99,20 @@ def latest_13f_accessions(cik: str, count: int = 2) -> List[Dict[str, str]]:
 def _find_info_table_url(cik: str, accession: str) -> str:
     """Locate the information-table XML inside an accession directory."""
     acc_nodash = accession.replace("-", "")
-    index_url = _BASE_ARCHIVES.format(cik=int(cik), acc_nodash=acc_nodash) + "/index.json"
+    index_url = (
+        _BASE_ARCHIVES.format(cik=int(cik), acc_nodash=acc_nodash) + "/index.json"
+    )
     listing = json.loads(_get(index_url))
     files = [f.get("name", "") for f in listing.get("directory", {}).get("item", [])]
     # The info table is an XML that is not the primary_doc; prefer names that
     # mention "infotable"/"information", else any non-primary .xml.
     candidates = [f for f in files if f.lower().endswith(".xml")]
     preferred = [f for f in candidates if re.search(r"info", f, re.I)]
-    pick = (preferred or [f for f in candidates if "primary_doc" not in f.lower()] or candidates)
+    pick = (
+        preferred
+        or [f for f in candidates if "primary_doc" not in f.lower()]
+        or candidates
+    )
     if not pick:
         raise RuntimeError(f"no XML found in accession {accession}")
     return _BASE_ARCHIVES.format(cik=int(cik), acc_nodash=acc_nodash) + "/" + pick[0]
@@ -144,14 +153,17 @@ def parse_info_table(xml_bytes: bytes) -> List[Holding]:
             continue
         if cusip in agg:
             prev = agg[cusip]
-            agg[cusip] = Holding(prev.issuer, cusip, prev.value_usd + value, prev.shares + shares)
+            agg[cusip] = Holding(
+                prev.issuer, cusip, prev.value_usd + value, prev.shares + shares
+            )
         else:
             agg[cusip] = Holding(issuer, cusip, value, shares)
     return list(agg.values())
 
 
-def diff_holdings(previous: List[Holding], current: List[Holding],
-                  min_value_usd: float = 1_000_000) -> List[HoldingChange]:
+def diff_holdings(
+    previous: List[Holding], current: List[Holding], min_value_usd: float = 1_000_000
+) -> List[HoldingChange]:
     """Quarter-over-quarter changes — the shadow signal. Small positions
     (< min_value_usd in the current quarter, or at exit time the prior value)
     are dropped to keep the feed meaningful."""
@@ -163,19 +175,33 @@ def diff_holdings(previous: List[Holding], current: List[Holding],
         before = prev.get(cusip)
         if before is None:
             if h.value_usd >= min_value_usd:
-                changes.append(HoldingChange("opened", h.issuer, cusip, 0, h.shares, h.value_usd))
+                changes.append(
+                    HoldingChange("opened", h.issuer, cusip, 0, h.shares, h.value_usd)
+                )
         elif h.shares > before.shares:
             if h.value_usd >= min_value_usd:
-                changes.append(HoldingChange("increased", h.issuer, cusip,
-                                             before.shares, h.shares, h.value_usd))
+                changes.append(
+                    HoldingChange(
+                        "increased",
+                        h.issuer,
+                        cusip,
+                        before.shares,
+                        h.shares,
+                        h.value_usd,
+                    )
+                )
         elif h.shares < before.shares:
-            changes.append(HoldingChange("decreased", h.issuer, cusip,
-                                         before.shares, h.shares, h.value_usd))
+            changes.append(
+                HoldingChange(
+                    "decreased", h.issuer, cusip, before.shares, h.shares, h.value_usd
+                )
+            )
 
     for cusip, before in prev.items():
         if cusip not in curr and before.value_usd >= min_value_usd:
-            changes.append(HoldingChange("exited", before.issuer, cusip,
-                                         before.shares, 0, 0))
+            changes.append(
+                HoldingChange("exited", before.issuer, cusip, before.shares, 0, 0)
+            )
 
     changes.sort(key=lambda c: c.value_after_usd, reverse=True)
     return changes

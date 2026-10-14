@@ -144,7 +144,9 @@ class CongressRepository(DynamoDBRepository):
         best_trade = None
         best_return = float("-inf")
 
-        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+            days=days_back
+        )
 
         for item in items:
             trade = self._item_to_trade(item)

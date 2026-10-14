@@ -184,7 +184,10 @@ class MarketTalkRepository(DynamoDBRepository):
                     host=MarketTalkHost(msg_data.get("host", "MIKE")),
                     text=msg_data.get("text", ""),
                     timestamp=datetime.fromisoformat(
-                        msg_data.get("timestamp", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                        msg_data.get(
+                            "timestamp",
+                            datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                        )
                     ),
                     ticker=msg_data.get("ticker"),
                     sentiment=msg_data.get("sentiment"),
@@ -197,7 +200,10 @@ class MarketTalkRepository(DynamoDBRepository):
             topic=item.get("topic", ""),
             messages=messages,
             createdAt=datetime.fromisoformat(
-                item.get("createdAt", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "createdAt",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             isLive=item.get("isLive", False),
             tickersMentioned=item.get("tickersMentioned", []),

@@ -58,10 +58,10 @@ class FearGreedClient:
 
         except httpx.HTTPError as e:
             logger.error("CNN Fear & Greed API error", error=str(e))
-            raise ExternalAPIError("CNN Fear & Greed", str(e))
+            raise ExternalAPIError("CNN Fear & Greed", str(e)) from e
         except Exception as e:
             logger.error("Failed to parse Fear & Greed data", error=str(e))
-            raise ExternalAPIError("CNN Fear & Greed", str(e))
+            raise ExternalAPIError("CNN Fear & Greed", str(e)) from e
 
     def _parse_mood_data(self, data: dict) -> MarketMood:
         """Parse CNN API response to MarketMood model."""

@@ -130,7 +130,9 @@ class CramerRepository(DynamoDBRepository):
         )
 
         # Filter to date range
-        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
+        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+            days=days_back
+        )
         recent_picks = []
         for item in items:
             pick = self._item_to_pick(item)

@@ -143,10 +143,10 @@ def _fetch_edgar_submissions(cik_padded: str) -> dict:
             return response.json()
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 404:
-            raise NotFoundError("SECFiling", f"CIK {cik_padded}")
-        raise ExternalAPIError("SEC EDGAR", str(exc))
+            raise NotFoundError("SECFiling", f"CIK {cik_padded}") from exc
+        raise ExternalAPIError("SEC EDGAR", str(exc)) from exc
     except httpx.HTTPError as exc:
-        raise ExternalAPIError("SEC EDGAR", str(exc))
+        raise ExternalAPIError("SEC EDGAR", str(exc)) from exc
 
 
 def _extract_13f_filings(submissions: dict, limit: int = 10) -> list[dict]:

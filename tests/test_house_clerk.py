@@ -69,6 +69,50 @@ class EnrichmentTests(unittest.TestCase):
         self.assertEqual(lookup(index, "OK01", "Hern")["party"], "R")
         self.assertIsNone(lookup(index, "TX07", "Nobody"))
 
+    def test_lookup_compound_surname_falls_back_to_sole_district_member(self):
+        from src.ingestion.legislators import lookup
+        index = {"MD:06:mcclain delaney": {"party": "D", "fullName": "April McClain Delaney"},
+                 "MD:mcclain delaney": {"party": "D", "fullName": "April McClain Delaney"}}
+        # Clerk files her as Last='Delaney', First='April McClain'
+        self.assertEqual(lookup(index, "MD06", "Delaney")["fullName"], "April McClain Delaney")
+        index["MD:06:other"] = {"party": "R", "fullName": "Someone Else"}
+        self.assertIsNone(lookup(index, "MD06", "Delaney"))  # ambiguous seat: no guess
+
+
+
+class FetchLatestTests(unittest.TestCase):
+    """fetch_latest_sync downloads PTRs concurrently; order and failure
+    accounting must match the old serial loop."""
+
+    def test_parallel_fetch_keeps_docid_order_and_skips_failures(self):
+        import time
+        from unittest import mock
+
+        from src.ingestion import house_clerk, house_ptr
+
+        names = ["Adams", "Baker", "Clark", "Davis"]
+        filings = [
+            PTRFiling(f"2003537{i}", last, "Pat", "IL01", "9/3/2026", 2026)
+            for i, last in enumerate(names)
+        ]
+
+        def fake_text(doc_id, year):
+            i = int(doc_id[-1])
+            if i == 2:
+                raise IOError("boom")
+            time.sleep(0.05 * (4 - i))  # later DocIDs finish first
+            return doc_id
+
+        with mock.patch.object(house_ptr, "fetch_index", return_value=filings), \
+             mock.patch.object(house_ptr, "fetch_ptr_text", side_effect=fake_text), \
+             mock.patch.object(house_ptr, "parse_ptr", return_value=[TRADE]), \
+             mock.patch.object(house_clerk.legislators, "load_member_index", return_value={}):
+            trades = house_clerk.fetch_latest_sync(year=2026)
+
+        self.assertEqual(
+            [t.memberName.split()[-1] for t in trades], ["Adams", "Baker", "Davis"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

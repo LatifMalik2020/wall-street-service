@@ -29,7 +29,9 @@ class EarningsRepository(DynamoDBRepository):
     ) -> Tuple[List[EarningsEvent], int]:
         """Get upcoming earnings events."""
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        end_date = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+        end_date = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).strftime(
+            "%Y-%m-%d"
+        )
 
         items, total = self._query_paginated(
             pk=self.PK_EARNINGS,
@@ -283,7 +285,10 @@ class EarningsRepository(DynamoDBRepository):
             ticker=item.get("ticker", ""),
             companyName=item.get("companyName", ""),
             earningsDate=datetime.fromisoformat(
-                item.get("earningsDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "earningsDate",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             earningsTime=item.get("earningsTime", "After"),
             estimatedEPS=(
@@ -314,7 +319,10 @@ class EarningsRepository(DynamoDBRepository):
             ticker=item.get("ticker", ""),
             prediction=EarningsPredictionType(item.get("prediction", "MEET")),
             createdAt=datetime.fromisoformat(
-                item.get("createdAt", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "createdAt",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             isCorrect=item.get("isCorrect"),
             xpAwarded=int(item.get("xpAwarded", 0)),

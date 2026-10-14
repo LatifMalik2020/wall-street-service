@@ -25,8 +25,12 @@ import zipfile
 from dataclasses import dataclass
 from typing import List
 
-INDEX_URL = "https://disclosures-clerk.house.gov/public_disc/financial-pdfs/{year}FD.zip"
-PTR_PDF_URL = "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{year}/{doc_id}.pdf"
+INDEX_URL = (
+    "https://disclosures-clerk.house.gov/public_disc/financial-pdfs/{year}FD.zip"
+)
+PTR_PDF_URL = (
+    "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{year}/{doc_id}.pdf"
+)
 USER_AGENT = "Mozilla/5.0 (TradeStreak data research contact@tradestreak.net)"
 
 
@@ -36,7 +40,7 @@ class PTRFiling:
     last: str
     first: str
     state_dst: str
-    filing_date: str          # MM/DD/YYYY as published
+    filing_date: str  # MM/DD/YYYY as published
     year: int
 
     @property
@@ -52,10 +56,10 @@ class PTRFiling:
 
 @dataclass
 class PTRTrade:
-    owner: str                # SP / DC / JT / '' (self)
+    owner: str  # SP / DC / JT / '' (self)
     asset: str
     ticker: str
-    action: str               # buy | sell | sell_partial | exchange
+    action: str  # buy | sell | sell_partial | exchange
     transaction_date: str
     notification_date: str
     amount_low: int
@@ -78,14 +82,16 @@ def fetch_index(year: int) -> List[PTRFiling]:
     for m in root.findall("Member"):
         if m.findtext("FilingType") != "P":
             continue
-        out.append(PTRFiling(
-            doc_id=(m.findtext("DocID") or "").strip(),
-            last=(m.findtext("Last") or "").strip(),
-            first=(m.findtext("First") or "").strip(),
-            state_dst=(m.findtext("StateDst") or "").strip(),
-            filing_date=(m.findtext("FilingDate") or "").strip(),
-            year=year,
-        ))
+        out.append(
+            PTRFiling(
+                doc_id=(m.findtext("DocID") or "").strip(),
+                last=(m.findtext("Last") or "").strip(),
+                first=(m.findtext("First") or "").strip(),
+                state_dst=(m.findtext("StateDst") or "").strip(),
+                filing_date=(m.findtext("FilingDate") or "").strip(),
+                year=year,
+            )
+        )
     out.sort(key=lambda f: f.doc_id)
     return out
 
@@ -93,6 +99,7 @@ def fetch_index(year: int) -> List[PTRFiling]:
 def fetch_ptr_text(doc_id: str, year: int) -> str:
     """Extracted text of an e-filed PTR PDF (decrypted with empty password)."""
     from pypdf import PdfReader
+
     reader = PdfReader(io.BytesIO(_get(PTR_PDF_URL.format(year=year, doc_id=doc_id))))
     if reader.is_encrypted:
         reader.decrypt("")
@@ -131,17 +138,19 @@ def parse_ptr(text: str) -> List[PTRTrade]:
         # the owner code can be glued to the asset when the regex ate no owner
         for code in ("SP", "DC", "JT"):
             if asset.startswith(code + " "):
-                owner, asset = code, asset[len(code) + 1:]
-        trades.append(PTRTrade(
-            owner=owner,
-            asset=asset,
-            ticker=m.group("ticker"),
-            action=_ACTIONS[m.group("action")],
-            transaction_date=m.group("tx"),
-            notification_date=m.group("notif"),
-            amount_low=int(m.group("low").replace(",", "")),
-            amount_high=int(m.group("high").replace(",", "")),
-        ))
+                owner, asset = code, asset[len(code) + 1 :]
+        trades.append(
+            PTRTrade(
+                owner=owner,
+                asset=asset,
+                ticker=m.group("ticker"),
+                action=_ACTIONS[m.group("action")],
+                transaction_date=m.group("tx"),
+                notification_date=m.group("notif"),
+                amount_low=int(m.group("low").replace(",", "")),
+                amount_high=int(m.group("high").replace(",", "")),
+            )
+        )
     return trades
 
 
@@ -155,7 +164,13 @@ def latest_trades(year: int, max_filings: int = 10) -> List[dict]:
         except Exception:
             continue  # single bad PDF must not kill the batch
         for t in trades:
-            out.append({"member": filing.member, "state": filing.state_dst,
-                        "filed": filing.filing_date, "doc_id": filing.doc_id,
-                        "trade": t})
+            out.append(
+                {
+                    "member": filing.member,
+                    "state": filing.state_dst,
+                    "filed": filing.filing_date,
+                    "doc_id": filing.doc_id,
+                    "trade": t,
+                }
+            )
     return out

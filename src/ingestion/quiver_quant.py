@@ -64,7 +64,9 @@ class QuiverQuantClient:
             data = response.json()
 
             trades = []
-            cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
+            cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+                days=days_back
+            )
 
             for item in data:
                 try:
@@ -80,7 +82,7 @@ class QuiverQuantClient:
 
         except httpx.HTTPError as e:
             logger.error("QuiverQuant API error", error=str(e))
-            raise ExternalAPIError("QuiverQuant", str(e))
+            raise ExternalAPIError("QuiverQuant", str(e)) from e
 
     async def fetch_congress_members(self) -> List[CongressMember]:
         """Fetch Congress member profiles.
@@ -144,7 +146,7 @@ class QuiverQuantClient:
 
         except Exception as e:
             logger.error("Failed to fetch Congress members", error=str(e))
-            raise ExternalAPIError("QuiverQuant", str(e))
+            raise ExternalAPIError("QuiverQuant", str(e)) from e
 
     def _parse_trade(self, item: dict) -> Optional[CongressTrade]:
         """Parse QuiverQuant trade data to CongressTrade model."""

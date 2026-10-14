@@ -2,8 +2,15 @@
 
 import boto3
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+
+
+def _utcnow() -> datetime:
+    """Naive UTC now (datetime.utcnow() is deprecated in 3.12); stays naive so
+    seeded isoformat() strings match the existing rows in DynamoDB."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 table = dynamodb.Table("tradestreak-wall-street")
@@ -119,7 +126,7 @@ def seed_cramer_picks():
     ]
 
     for pick_data in picks:
-        pick_date = datetime.utcnow() - timedelta(days=pick_data["daysAgo"])
+        pick_date = _utcnow() - timedelta(days=pick_data["daysAgo"])
         price_at_pick = pick_data["priceAtPick"]
         current_price = pick_data["currentPrice"]
         return_percent = ((current_price - price_at_pick) / price_at_pick) * 100
@@ -139,13 +146,15 @@ def seed_cramer_picks():
             "pickDate": pick_date.isoformat(),
             "showName": pick_data["showName"],
             "notes": pick_data["notes"],
-            "createdAt": datetime.utcnow().isoformat(),
-            "updatedAt": datetime.utcnow().isoformat(),
+            "createdAt": _utcnow().isoformat(),
+            "updatedAt": _utcnow().isoformat(),
             "GSI1PK": f"TICKER#{pick_data['ticker']}",
             "GSI1SK": f"CRAMER#{pick_date.strftime('%Y-%m-%d')}",
         }
         table.put_item(Item=item)
-        print(f"Seeded Cramer pick: {pick_data['ticker']} ({pick_data['recommendation']})")
+        print(
+            f"Seeded Cramer pick: {pick_data['ticker']} ({pick_data['recommendation']})"
+        )
 
 
 def seed_congress_members():
@@ -230,12 +239,14 @@ def seed_congress_members():
             "state": member["state"],
             "district": member.get("district"),
             "totalTrades": member["totalTrades"],
-            "estimatedPortfolioReturn": Decimal(str(member["estimatedPortfolioReturn"])),
+            "estimatedPortfolioReturn": Decimal(
+                str(member["estimatedPortfolioReturn"])
+            ),
             "avgDaysToDisclose": Decimal(str(member["avgDaysToDisclose"])),
             "topHoldings": member.get("topHoldings", []),
             "imageUrl": member.get("imageUrl"),
-            "createdAt": datetime.utcnow().isoformat(),
-            "updatedAt": datetime.utcnow().isoformat(),
+            "createdAt": _utcnow().isoformat(),
+            "updatedAt": _utcnow().isoformat(),
             # GSI for sorting by return
             "GSI1PK": "CONGRESS_LEADERBOARD",
             "GSI1SK": f"{member['estimatedPortfolioReturn']:08.2f}#{member['id']}",
@@ -261,8 +272,8 @@ def seed_congress_trades():
             "transactionType": "Purchase",
             "amountRangeLow": 250000,
             "amountRangeHigh": 500000,
-            "transactionDate": datetime.utcnow() - timedelta(days=42),
-            "disclosureDate": datetime.utcnow() - timedelta(days=14),
+            "transactionDate": _utcnow() - timedelta(days=42),
+            "disclosureDate": _utcnow() - timedelta(days=14),
             "priceAtTransaction": 118.50,
             "currentPrice": 142.80,
         },
@@ -277,8 +288,8 @@ def seed_congress_trades():
             "transactionType": "Purchase",
             "amountRangeLow": 100000,
             "amountRangeHigh": 250000,
-            "transactionDate": datetime.utcnow() - timedelta(days=28),
-            "disclosureDate": datetime.utcnow() - timedelta(days=7),
+            "transactionDate": _utcnow() - timedelta(days=28),
+            "disclosureDate": _utcnow() - timedelta(days=7),
             "priceAtTransaction": 175.30,
             "currentPrice": 192.30,
         },
@@ -293,8 +304,8 @@ def seed_congress_trades():
             "transactionType": "Purchase",
             "amountRangeLow": 50000,
             "amountRangeHigh": 100000,
-            "transactionDate": datetime.utcnow() - timedelta(days=35),
-            "disclosureDate": datetime.utcnow() - timedelta(days=3),
+            "transactionDate": _utcnow() - timedelta(days=35),
+            "disclosureDate": _utcnow() - timedelta(days=3),
             "priceAtTransaction": 405.00,
             "currentPrice": 425.50,
         },
@@ -309,8 +320,8 @@ def seed_congress_trades():
             "transactionType": "Sale",
             "amountRangeLow": 15000,
             "amountRangeHigh": 50000,
-            "transactionDate": datetime.utcnow() - timedelta(days=20),
-            "disclosureDate": datetime.utcnow() - timedelta(days=5),
+            "transactionDate": _utcnow() - timedelta(days=20),
+            "disclosureDate": _utcnow() - timedelta(days=5),
             "priceAtTransaction": 235.00,
             "currentPrice": 230.50,
         },
@@ -325,8 +336,8 @@ def seed_congress_trades():
             "transactionType": "Purchase",
             "amountRangeLow": 15000,
             "amountRangeHigh": 50000,
-            "transactionDate": datetime.utcnow() - timedelta(days=45),
-            "disclosureDate": datetime.utcnow() - timedelta(days=7),
+            "transactionDate": _utcnow() - timedelta(days=45),
+            "disclosureDate": _utcnow() - timedelta(days=7),
             "priceAtTransaction": 108.50,
             "currentPrice": 112.30,
         },
@@ -341,8 +352,8 @@ def seed_congress_trades():
             "transactionType": "Purchase",
             "amountRangeLow": 100000,
             "amountRangeHigh": 250000,
-            "transactionDate": datetime.utcnow() - timedelta(days=38),
-            "disclosureDate": datetime.utcnow() - timedelta(days=10),
+            "transactionDate": _utcnow() - timedelta(days=38),
+            "disclosureDate": _utcnow() - timedelta(days=10),
             "priceAtTransaction": 545.00,
             "currentPrice": 612.50,
         },
@@ -377,14 +388,16 @@ def seed_congress_trades():
             "priceAtTransaction": Decimal(str(price_at_trans)),
             "currentPrice": Decimal(str(current_price)),
             "returnSinceTransaction": Decimal(str(round(return_percent, 2))),
-            "createdAt": datetime.utcnow().isoformat(),
-            "updatedAt": datetime.utcnow().isoformat(),
+            "createdAt": _utcnow().isoformat(),
+            "updatedAt": _utcnow().isoformat(),
             # GSI for ticker lookups
             "GSI1PK": f"TICKER#{trade_data['ticker']}",
             "GSI1SK": f"CONGRESS#{disclosure_date.strftime('%Y-%m-%d')}",
         }
         table.put_item(Item=item)
-        print(f"Seeded Congress trade: {trade_data['memberName']} - {trade_data['ticker']} ({trade_data['transactionType']})")
+        print(
+            f"Seeded Congress trade: {trade_data['memberName']} - {trade_data['ticker']} ({trade_data['transactionType']})"
+        )
 
 
 def seed_earnings_events():
@@ -465,7 +478,7 @@ def seed_earnings_events():
     ]
 
     for event_data in events:
-        earnings_date = datetime.utcnow() + timedelta(days=event_data["daysAhead"])
+        earnings_date = _utcnow() + timedelta(days=event_data["daysAhead"])
         event_id = f"{event_data['ticker']}-{earnings_date.strftime('%Y-%m-%d')}"
 
         item = {
@@ -479,14 +492,16 @@ def seed_earnings_events():
             "fiscalQuarter": event_data["fiscalQuarter"],
             "fiscalYear": event_data["fiscalYear"],
             "marketCap": event_data["marketCap"],
-            "createdAt": datetime.utcnow().isoformat(),
-            "updatedAt": datetime.utcnow().isoformat(),
+            "createdAt": _utcnow().isoformat(),
+            "updatedAt": _utcnow().isoformat(),
             # GSI for ticker lookups
             "GSI1PK": f"TICKER#{event_data['ticker']}",
             "GSI1SK": f"EARNINGS#{earnings_date.strftime('%Y-%m-%d')}",
         }
         table.put_item(Item=item)
-        print(f"Seeded earnings event: {event_data['ticker']} ({earnings_date.strftime('%Y-%m-%d')})")
+        print(
+            f"Seeded earnings event: {event_data['ticker']} ({earnings_date.strftime('%Y-%m-%d')})"
+        )
 
 
 if __name__ == "__main__":

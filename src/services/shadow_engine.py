@@ -21,8 +21,8 @@ MIN_WEIGHT = 0.005  # ignore sub-0.5% sliver weights
 @dataclass
 class TargetWeight:
     ticker: str
-    weight: float                 # 0..1 share of the shadow allocation
-    provenance: str = ""          # accession / disclosure id
+    weight: float  # 0..1 share of the shadow allocation
+    provenance: str = ""  # accession / disclosure id
 
 
 @dataclass
@@ -35,17 +35,17 @@ class ShadowPosition:
 @dataclass
 class ShadowTrade:
     ticker: str
-    side: str                     # buy | sell
+    side: str  # buy | sell
     shares: float
     price: float
-    kind: str                     # init | opened | exited | increased | decreased
+    kind: str  # init | opened | exited | increased | decreased
     provenance: str = ""
 
 
 @dataclass
 class ShadowPortfolio:
-    allocated_cash: float                       # original virtual allocation
-    cash: float                                 # uninvested remainder
+    allocated_cash: float  # original virtual allocation
+    cash: float  # uninvested remainder
     positions: List[ShadowPosition] = field(default_factory=list)
     applied_accession: str = ""
 
@@ -58,8 +58,9 @@ class ShadowPortfolio:
         )
 
 
-def target_weights_from_holdings(holdings: List[dict],
-                                 top_n: int = TOP_N_POSITIONS) -> List[TargetWeight]:
+def target_weights_from_holdings(
+    holdings: List[dict], top_n: int = TOP_N_POSITIONS
+) -> List[TargetWeight]:
     """Filer holdings [{ticker, value_usd}] -> normalized top-N target weights.
 
     Rows without a ticker (unmapped CUSIPs, bonds) are excluded BEFORE
@@ -83,9 +84,15 @@ def target_weights_from_holdings(holdings: List[dict],
     return out
 
 
-def _trade_to_weight(portfolio: ShadowPortfolio, ticker: str, target_value: float,
-                     price: float, kind: str, provenance: str,
-                     trades: List[ShadowTrade]) -> None:
+def _trade_to_weight(
+    portfolio: ShadowPortfolio,
+    ticker: str,
+    target_value: float,
+    price: float,
+    kind: str,
+    provenance: str,
+    trades: List[ShadowTrade],
+) -> None:
     """Buy/sell `ticker` so its market value ≈ target_value at `price`."""
     if price <= 0:
         return
@@ -116,33 +123,47 @@ def _trade_to_weight(portfolio: ShadowPortfolio, ticker: str, target_value: floa
         pos.shares -= shares
         portfolio.cash += shares * price
         trades.append(ShadowTrade(ticker, "sell", shares, price, kind, provenance))
-        if pos.shares * price < 1.0:      # fully (or effectively) exited
+        if pos.shares * price < 1.0:  # fully (or effectively) exited
             portfolio.cash += pos.shares * price
             portfolio.positions.remove(pos)
 
 
-def initialize_shadow(allocation: float, targets: List[TargetWeight],
-                      prices: Dict[str, float],
-                      accession: str) -> tuple:
+def initialize_shadow(
+    allocation: float,
+    targets: List[TargetWeight],
+    prices: Dict[str, float],
+    accession: str,
+) -> tuple:
     """Build a fresh shadow portfolio from target weights at current prices.
     Returns (portfolio, trades). Tickers with no price are skipped (their
     weight stays as cash — honest, visible, and self-correcting next filing)."""
-    portfolio = ShadowPortfolio(allocated_cash=allocation, cash=allocation,
-                                applied_accession=accession)
+    portfolio = ShadowPortfolio(
+        allocated_cash=allocation, cash=allocation, applied_accession=accession
+    )
     trades: List[ShadowTrade] = []
     for t in targets:
         price = prices.get(t.ticker, 0)
-        _trade_to_weight(portfolio, t.ticker, allocation * t.weight, price,
-                         "init", t.provenance or accession, trades)
+        _trade_to_weight(
+            portfolio,
+            t.ticker,
+            allocation * t.weight,
+            price,
+            "init",
+            t.provenance or accession,
+            trades,
+        )
     return portfolio, trades
 
 
 PTR_REFERENCE_BOOK = 1_000_000.0  # assumed member portfolio for scaling nudges
-PTR_MAX_WEIGHT = 0.25             # single-ticker cap for congress shadows
+PTR_MAX_WEIGHT = 0.25  # single-ticker cap for congress shadows
 
 
-def nudge_targets_from_ptr(targets: List[TargetWeight], ptr_trades: List[dict],
-                           reference_book: float = PTR_REFERENCE_BOOK) -> List[TargetWeight]:
+def nudge_targets_from_ptr(
+    targets: List[TargetWeight],
+    ptr_trades: List[dict],
+    reference_book: float = PTR_REFERENCE_BOOK,
+) -> List[TargetWeight]:
     """Congress mode: PTRs disclose trades (deltas + amount RANGES), never the
     full book, so a congress shadow follows trades as weight NUDGES:
 
@@ -168,12 +189,19 @@ def nudge_targets_from_ptr(targets: List[TargetWeight], ptr_trades: List[dict],
                 if weights[ticker] < MIN_WEIGHT:
                     weights.pop(ticker)
         provenance[ticker] = tr.get("provenance", provenance.get(ticker, ""))
-    return [TargetWeight(tk, w, provenance.get(tk, ""))
-            for tk, w in weights.items() if w >= MIN_WEIGHT]
+    return [
+        TargetWeight(tk, w, provenance.get(tk, ""))
+        for tk, w in weights.items()
+        if w >= MIN_WEIGHT
+    ]
 
 
-def apply_filing(portfolio: ShadowPortfolio, new_targets: List[TargetWeight],
-                 prices: Dict[str, float], accession: str) -> List[ShadowTrade]:
+def apply_filing(
+    portfolio: ShadowPortfolio,
+    new_targets: List[TargetWeight],
+    prices: Dict[str, float],
+    accession: str,
+) -> List[ShadowTrade]:
     """Rebalance an existing shadow to a new filing's target weights.
 
     Sells first (exits + reductions free the cash that buys then consume),
@@ -191,13 +219,21 @@ def apply_filing(portfolio: ShadowPortfolio, new_targets: List[TargetWeight],
         price = prices.get(pos.ticker, 0)
         target = target_by_ticker.get(pos.ticker)
         if target is None:
-            _trade_to_weight(portfolio, pos.ticker, 0, price,
-                             "exited", accession, trades)
+            _trade_to_weight(
+                portfolio, pos.ticker, 0, price, "exited", accession, trades
+            )
         else:
             target_value = total_value * target.weight
             if price > 0 and pos.shares * price > target_value:
-                _trade_to_weight(portfolio, pos.ticker, target_value, price,
-                                 "decreased", accession, trades)
+                _trade_to_weight(
+                    portfolio,
+                    pos.ticker,
+                    target_value,
+                    price,
+                    "decreased",
+                    accession,
+                    trades,
+                )
 
     # 2) opens and increases
     for t in new_targets:
@@ -207,8 +243,9 @@ def apply_filing(portfolio: ShadowPortfolio, new_targets: List[TargetWeight],
         current_value = (pos.shares * price) if pos and price > 0 else 0
         if current_value < target_value:
             kind = "increased" if pos else "opened"
-            _trade_to_weight(portfolio, t.ticker, target_value, price,
-                             kind, accession, trades)
+            _trade_to_weight(
+                portfolio, t.ticker, target_value, price, kind, accession, trades
+            )
 
     portfolio.applied_accession = accession
     return trades

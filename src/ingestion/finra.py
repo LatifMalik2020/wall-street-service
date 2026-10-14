@@ -23,7 +23,9 @@ _UA = {"User-Agent": "TradeStreak data research contact@tradestreak.net"}
 _day_cache: Dict[str, Optional[Dict[str, tuple]]] = {}
 
 
-async def _day_volumes(client: httpx.AsyncClient, ymd: str) -> Optional[Dict[str, tuple]]:
+async def _day_volumes(
+    client: httpx.AsyncClient, ymd: str
+) -> Optional[Dict[str, tuple]]:
     if ymd in _day_cache:
         return _day_cache[ymd]
     resp = await client.get(_URL.format(ymd=ymd))
@@ -63,13 +65,17 @@ async def get_short_volume(symbol: str, limit: int = 5) -> List[Dict]:
                 if not row:
                     continue
                 short, total = row
-                out.append({
-                    "ticker": sym,
-                    "date": f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}",
-                    "short_volume": short,
-                    "total_volume": total,
-                    "short_volume_ratio": round(short / total, 4) if total else None,
-                })
+                out.append(
+                    {
+                        "ticker": sym,
+                        "date": f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}",
+                        "short_volume": short,
+                        "total_volume": total,
+                        "short_volume_ratio": (
+                            round(short / total, 4) if total else None
+                        ),
+                    }
+                )
     except httpx.HTTPError as e:
         logger.warning("FINRA short volume fetch failed", symbol=sym, error=str(e))
     return out
@@ -83,13 +89,13 @@ async def get_short_volume(symbol: str, limit: int = 5) -> List[Dict]:
 # Same data as the cdn.finra.org/equity/otcmarket/biweekly/shrt{YYYYMMDD}.csv
 # files, but filterable by symbol so we never download the 2 MB file.
 
-_SI_URL = ("https://api.finra.org/data/group/otcMarket/name/"
-           "consolidatedShortInterest")
+_SI_URL = "https://api.finra.org/data/group/otcMarket/name/" "consolidatedShortInterest"
 _SI_LOOKBACK_DAYS = 200  # ~13 settlement dates; enough for limit<=10
 
 
-def short_interest_rows_from_finra(symbol: str, records: List[Dict],
-                                   limit: int) -> List[Dict]:
+def short_interest_rows_from_finra(
+    symbol: str, records: List[Dict], limit: int
+) -> List[Dict]:
     """FINRA API records -> short-interest rows (settlement_date desc) in the
     shape the stocks handler builds ShortInterestData from."""
     sym = symbol.upper()
@@ -109,13 +115,15 @@ def short_interest_rows_from_finra(symbol: str, records: List[Dict],
         dtc = r.get("daysToCoverQuantity")
         if dtc is None and adv:
             dtc = round(float(r["currentShortPositionQuantity"]) / float(adv), 2)
-        out.append({
-            "ticker": sym,
-            "short_interest": float(r["currentShortPositionQuantity"]),
-            "avg_daily_volume": float(adv) if adv is not None else None,
-            "days_to_cover": float(dtc) if dtc is not None else None,
-            "settlement_date": settle,
-        })
+        out.append(
+            {
+                "ticker": sym,
+                "short_interest": float(r["currentShortPositionQuantity"]),
+                "avg_daily_volume": float(adv) if adv is not None else None,
+                "days_to_cover": float(dtc) if dtc is not None else None,
+                "settlement_date": settle,
+            }
+        )
     return out
 
 
@@ -129,15 +137,18 @@ async def get_short_interest(symbol: str, limit: int = 5) -> List[Dict]:
         "compareFilters": [
             {"compareType": "equal", "fieldName": "symbolCode", "fieldValue": sym},
         ],
-        "dateRangeFilters": [{
-            "fieldName": "settlementDate",
-            "startDate": (today - timedelta(days=_SI_LOOKBACK_DAYS)).isoformat(),
-            "endDate": today.isoformat(),
-        }],
+        "dateRangeFilters": [
+            {
+                "fieldName": "settlementDate",
+                "startDate": (today - timedelta(days=_SI_LOOKBACK_DAYS)).isoformat(),
+                "endDate": today.isoformat(),
+            }
+        ],
     }
     try:
-        async with httpx.AsyncClient(timeout=15, headers={
-                **_UA, "Accept": "application/json"}) as client:
+        async with httpx.AsyncClient(
+            timeout=15, headers={**_UA, "Accept": "application/json"}
+        ) as client:
             resp = await client.post(_SI_URL, json=body)
             if resp.status_code == 204 or not resp.content:
                 return []

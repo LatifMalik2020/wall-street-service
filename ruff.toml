@@ -1,0 +1,8 @@
+# Ruff 0.16+ widened its default rule set (UP/I/BLE/DTZ/...), which turned
+# `ruff check src/` in ci.yml into ~770 style findings overnight.  Pin the
+# classic default rules so CI gates on real errors, not type-hint style.
+target-version = "py312"
+line-length = 88
+
+[lint]
+select = ["E4", "E7", "E9", "F"]

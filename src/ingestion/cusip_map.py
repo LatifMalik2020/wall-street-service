@@ -28,10 +28,10 @@ EDGAR_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 USER_AGENT = "TradeStreak data research contact@tradestreak.net"
 CACHE_PATH = os.environ.get("CUSIP_CACHE_PATH", "/tmp/tradestreak_cusip_cache.json")
 
-_BATCH_KEYED = 100    # OpenFIGI max jobs/request with an API key
-_BATCH_KEYLESS = 10   # keyless hard limit — 11+ jobs returns HTTP 413
+_BATCH_KEYED = 100  # OpenFIGI max jobs/request with an API key
+_BATCH_KEYLESS = 10  # keyless hard limit — 11+ jobs returns HTTP 413
 _KEYLESS_PAUSE = 6.5  # seconds between keyless batches (rate ~25/min)
-_MAX_PASSES = 4       # retry throttled jobs until convergence (bounded)
+_MAX_PASSES = 4  # retry throttled jobs until convergence (bounded)
 
 
 def _load_cache() -> Dict[str, Dict[str, str]]:
@@ -67,7 +67,7 @@ def _openfigi_batch(cusips: List[str]) -> tuple:
         results = json.load(resp)
     out: Dict[str, Dict[str, str]] = {}
     erred: List[str] = []
-    for cusip, result in zip(cusips, results):
+    for cusip, result in zip(cusips, results, strict=False):
         rows = result.get("data") or []
         if rows:
             out[cusip] = {
@@ -83,9 +83,31 @@ def _openfigi_batch(cusips: List[str]) -> tuple:
 _edgar_names: Optional[Dict[str, str]] = None  # normalized name -> ticker
 
 
-_SUFFIX_TOKENS = {"INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY",
-                  "PLC", "LTD", "LIMITED", "LP", "SA", "NV", "NEW", "DEL",
-                  "HOLDINGS", "HLDGS", "GROUP", "GRP", "CLASS", "CL", "A", "B", "C"}
+_SUFFIX_TOKENS = {
+    "INC",
+    "INCORPORATED",
+    "CORP",
+    "CORPORATION",
+    "CO",
+    "COMPANY",
+    "PLC",
+    "LTD",
+    "LIMITED",
+    "LP",
+    "SA",
+    "NV",
+    "NEW",
+    "DEL",
+    "HOLDINGS",
+    "HLDGS",
+    "GROUP",
+    "GRP",
+    "CLASS",
+    "CL",
+    "A",
+    "B",
+    "C",
+}
 
 
 def _normalize(name: str) -> str:
@@ -100,18 +122,25 @@ def _normalize(name: str) -> str:
 def _edgar_name_lookup(issuer: str) -> Optional[Dict[str, str]]:
     global _edgar_names
     if _edgar_names is None:
-        req = urllib.request.Request(EDGAR_TICKERS_URL, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(
+            EDGAR_TICKERS_URL, headers={"User-Agent": USER_AGENT}
+        )
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = json.load(resp)
         _edgar_names = {}
         for row in raw.values():
-            _edgar_names.setdefault(_normalize(row.get("title", "")), row.get("ticker", ""))
+            _edgar_names.setdefault(
+                _normalize(row.get("title", "")), row.get("ticker", "")
+            )
     ticker = _edgar_names.get(_normalize(issuer))
     return {"ticker": ticker, "name": issuer} if ticker else None
 
 
-def map_cusips(cusips: List[str], issuers: Optional[Dict[str, str]] = None,
-               pause: Optional[float] = None) -> Dict[str, Dict[str, str]]:
+def map_cusips(
+    cusips: List[str],
+    issuers: Optional[Dict[str, str]] = None,
+    pause: Optional[float] = None,
+) -> Dict[str, Dict[str, str]]:
     """Resolve CUSIPs to {ticker, name}. `issuers` (cusip -> issuer name)
     enables the EDGAR fallback for anything OpenFIGI misses."""
     cache = _load_cache()
@@ -132,7 +161,7 @@ def map_cusips(cusips: List[str], issuers: Optional[Dict[str, str]] = None,
             time.sleep(max(wait, 3.0) * attempt)
         still: List[str] = []
         for i in range(0, len(pending), batch_size):
-            batch = pending[i:i + batch_size]
+            batch = pending[i : i + batch_size]
             try:
                 hits, erred = _openfigi_batch(batch)
                 resolved.update(hits)

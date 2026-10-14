@@ -13,11 +13,13 @@ import time
 import urllib.request
 from typing import Dict, Optional
 
-LEGISLATORS_URL = ("https://unitedstates.github.io/congress-legislators/"
-                   "legislators-current.json")
+LEGISLATORS_URL = (
+    "https://unitedstates.github.io/congress-legislators/" "legislators-current.json"
+)
 USER_AGENT = "TradeStreak data research contact@tradestreak.net"
-CACHE_PATH = os.environ.get("LEGISLATORS_CACHE_PATH",
-                            "/tmp/tradestreak_legislators.json")
+CACHE_PATH = os.environ.get(
+    "LEGISLATORS_CACHE_PATH", "/tmp/tradestreak_legislators.json"
+)
 CACHE_TTL_SECONDS = 24 * 3600
 
 _PARTY_CODES = {"Democrat": "D", "Republican": "R", "Independent": "I"}
@@ -50,9 +52,11 @@ def load_member_index(force: bool = False) -> Dict[str, dict]:
         last = (name.get("last") or "").lower()
         state = (term.get("state") or "").upper()
         party = _PARTY_CODES.get(term.get("party", ""), "U")
-        info = {"party": party,
-                "fullName": name.get("official_full")
-                or f"{name.get('first', '')} {name.get('last', '')}".strip()}
+        info = {
+            "party": party,
+            "fullName": name.get("official_full")
+            or f"{name.get('first', '')} {name.get('last', '')}".strip(),
+        }
         if term.get("type") == "rep" and term.get("district") is not None:
             index[f"{state}:{int(term['district']):02d}:{last}"] = info
         index.setdefault(f"{state}:{last}", info)
@@ -70,7 +74,14 @@ def lookup(index: Dict[str, dict], state_dst: str, last: str) -> Optional[dict]:
     state, district = state_dst[:2].upper(), state_dst[2:]
     last = last.lower()
     if district.isdigit():
-        hit = index.get(f"{state}:{int(district):02d}:{last}")
+        prefix = f"{state}:{int(district):02d}:"
+        hit = index.get(prefix + last)
         if hit:
             return hit
+        # The Clerk splits compound surnames differently from the dataset
+        # (Last='Delaney', First='April McClain'); a House seat has one
+        # sitting member, so a sole district match is unambiguous.
+        seat = [v for k, v in index.items() if k.startswith(prefix)]
+        if len(seat) == 1:
+            return seat[0]
     return index.get(f"{state}:{last}")

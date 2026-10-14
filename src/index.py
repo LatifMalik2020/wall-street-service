@@ -140,9 +140,7 @@ def _handle_http(event: dict) -> dict:
 
     if path == "/wall-street/shadow/trades" and http_method == "GET":
         _require_auth(user_id)
-        return get_user_shadow_trades(
-            user_id, limit=int(query_params.get("limit", 50))
-        )
+        return get_user_shadow_trades(user_id, limit=int(query_params.get("limit", 50)))
 
     if path.startswith("/wall-street/shadow/") and http_method == "GET":
         _require_auth(user_id)

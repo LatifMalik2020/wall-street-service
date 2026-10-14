@@ -44,7 +44,8 @@ from src.utils.logging import logger
 
 ALPACA_DATA_URL = os.environ.get("ALPACA_DATA_URL", "https://data.alpaca.markets")
 ALPACA_AUTHX_URL = os.environ.get(
-    "ALPACA_AUTHX_URL", "https://authx.sandbox.alpaca.markets/v1/oauth2/token")
+    "ALPACA_AUTHX_URL", "https://authx.sandbox.alpaca.markets/v1/oauth2/token"
+)
 _FEED = os.environ.get("ALPACA_DATA_FEED", "iex")
 
 _BAR_TIMESPANS = {"minute": "1Min", "hour": "1Hour", "day": "1Day", "week": "1Week"}
@@ -73,20 +74,26 @@ class AlpacaMarketClient(PolygonMarketClient):
     @property
     def alpaca_enabled(self) -> bool:
         return bool(self._apca_key and self._apca_secret) or bool(
-            self._authx_id and self._authx_secret)
+            self._authx_id and self._authx_secret
+        )
 
     async def _alpaca_headers(self) -> Dict[str, str]:
         if self._apca_key and self._apca_secret:
-            return {"APCA-API-KEY-ID": self._apca_key,
-                    "APCA-API-SECRET-KEY": self._apca_secret}
+            return {
+                "APCA-API-KEY-ID": self._apca_key,
+                "APCA-API-SECRET-KEY": self._apca_secret,
+            }
         if self._authx_token and _time.time() < self._authx_expiry - 60:
             return {"Authorization": f"Bearer {self._authx_token}"}
         async with httpx.AsyncClient(timeout=30) as c:
-            resp = await c.post(ALPACA_AUTHX_URL, data={
-                "grant_type": "client_credentials",
-                "client_id": self._authx_id,
-                "client_secret": self._authx_secret,
-            })
+            resp = await c.post(
+                ALPACA_AUTHX_URL,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": self._authx_id,
+                    "client_secret": self._authx_secret,
+                },
+            )
             resp.raise_for_status()
             tok = resp.json()
         self._authx_token = tok["access_token"]
@@ -97,7 +104,8 @@ class AlpacaMarketClient(PolygonMarketClient):
         if self._alpaca_http is None:
             self._alpaca_http = httpx.AsyncClient(base_url=ALPACA_DATA_URL, timeout=20)
         resp = await self._alpaca_http.get(
-            path, params=params, headers=await self._alpaca_headers())
+            path, params=params, headers=await self._alpaca_headers()
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -112,8 +120,10 @@ class AlpacaMarketClient(PolygonMarketClient):
     async def _snapshots(self, symbols: List[str]) -> Dict[str, Dict]:
         if not symbols:
             return {}
-        data = await self._alpaca_get("/v2/stocks/snapshots", {
-            "symbols": ",".join(s.upper() for s in symbols), "feed": _FEED})
+        data = await self._alpaca_get(
+            "/v2/stocks/snapshots",
+            {"symbols": ",".join(s.upper() for s in symbols), "feed": _FEED},
+        )
         return data.get("snapshots", data) or {}
 
     @staticmethod
@@ -128,10 +138,17 @@ class AlpacaMarketClient(PolygonMarketClient):
         change_pct = (change / prev_close * 100) if prev_close else 0
         return {
             "ticker": symbol.upper(),
-            "day": {k: day.get(a) for k, a in
-                    (("c", "c"), ("o", "o"), ("h", "h"), ("l", "l"), ("v", "v"))},
-            "prevDay": {"c": prev.get("c"), "o": prev.get("o"), "h": prev.get("h"),
-                        "l": prev.get("l"), "v": prev.get("v")},
+            "day": {
+                k: day.get(a)
+                for k, a in (("c", "c"), ("o", "o"), ("h", "h"), ("l", "l"), ("v", "v"))
+            },
+            "prevDay": {
+                "c": prev.get("c"),
+                "o": prev.get("o"),
+                "h": prev.get("h"),
+                "l": prev.get("l"),
+                "v": prev.get("v"),
+            },
             "lastTrade": {"p": trade.get("p")},
             "todaysChange": round(change, 4),
             "todaysChangePerc": round(change_pct, 4),
@@ -146,7 +163,9 @@ class AlpacaMarketClient(PolygonMarketClient):
             if not snap:
                 return None
             poly = self._to_polygon_snapshot(symbol, snap)
-            price = poly["day"]["c"] or poly["lastTrade"]["p"] or poly["prevDay"]["c"] or 0
+            price = (
+                poly["day"]["c"] or poly["lastTrade"]["p"] or poly["prevDay"]["c"] or 0
+            )
             return {
                 "symbol": symbol.upper(),
                 "price": float(price),
@@ -157,7 +176,7 @@ class AlpacaMarketClient(PolygonMarketClient):
             }
         except httpx.HTTPError as e:
             logger.warning("Alpaca quote failed", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Alpaca", str(e))
+            raise ExternalAPIError("Alpaca", str(e)) from e
 
     async def batch_quotes(self, symbols: List[str]) -> Dict[str, Dict]:
         if not self.alpaca_enabled:
@@ -193,17 +212,22 @@ class AlpacaMarketClient(PolygonMarketClient):
             snaps = await self._snapshots(symbols)
         except httpx.HTTPError as e:
             logger.warning("Alpaca bulk snapshot failed", error=str(e))
-            raise ExternalAPIError("Alpaca", str(e))
-        return [self._to_polygon_snapshot(sym, snap)
-                for sym, snap in snaps.items() if snap]
+            raise ExternalAPIError("Alpaca", str(e)) from e
+        return [
+            self._to_polygon_snapshot(sym, snap) for sym, snap in snaps.items() if snap
+        ]
 
     # -- movers (screener) --
 
-    async def get_market_movers(self, include_otc: bool = False) -> Tuple[List[Dict], List[Dict]]:
+    async def get_market_movers(
+        self, include_otc: bool = False
+    ) -> Tuple[List[Dict], List[Dict]]:
         if not self.alpaca_enabled:
             return await super().get_market_movers(include_otc)
         try:
-            data = await self._alpaca_get("/v1beta1/screener/stocks/movers", {"top": 20})
+            data = await self._alpaca_get(
+                "/v1beta1/screener/stocks/movers", {"top": 20}
+            )
         except httpx.HTTPError as e:
             logger.warning("Alpaca movers failed", error=str(e))
             return [], []
@@ -226,13 +250,24 @@ class AlpacaMarketClient(PolygonMarketClient):
 
     # -- aggregates (equities/ETFs only — indices already use ETF proxies) --
 
-    async def get_index_aggregates(self, ticker: str, multiplier: int, timespan: str,
-                                   from_date: str, to_date: str, adjusted: bool = True,
-                                   sort: str = "asc", limit: int = 5000) -> List[Dict]:
+    async def get_index_aggregates(
+        self,
+        ticker: str,
+        multiplier: int,
+        timespan: str,
+        from_date: str,
+        to_date: str,
+        adjusted: bool = True,
+        sort: str = "asc",
+        limit: int = 5000,
+    ) -> List[Dict]:
         if not self.alpaca_enabled:
             return await super().get_index_aggregates(
-                ticker, multiplier, timespan, from_date, to_date, adjusted, sort, limit)
-        unit = {"minute": "Min", "hour": "Hour", "day": "Day", "week": "Week"}.get(timespan)
+                ticker, multiplier, timespan, from_date, to_date, adjusted, sort, limit
+            )
+        unit = {"minute": "Min", "hour": "Hour", "day": "Day", "week": "Week"}.get(
+            timespan
+        )
         timeframe = f"{multiplier}{unit}" if unit else None
         if not timeframe:
             raise ExternalAPIError("Alpaca", f"unsupported timespan {timespan!r}")
@@ -240,22 +275,38 @@ class AlpacaMarketClient(PolygonMarketClient):
             bars: List[Dict] = []
             page = None
             for _ in range(5):
-                params = {"timeframe": timeframe, "start": f"{from_date}T00:00:00Z",
-                          "end": f"{to_date}T23:59:59Z", "limit": 10000,
-                          "adjustment": "split" if adjusted else "raw",
-                          "feed": _FEED, "sort": sort}
+                params = {
+                    "timeframe": timeframe,
+                    "start": f"{from_date}T00:00:00Z",
+                    "end": f"{to_date}T23:59:59Z",
+                    "limit": 10000,
+                    "adjustment": "split" if adjusted else "raw",
+                    "feed": _FEED,
+                    "sort": sort,
+                }
                 if page:
                     params["page_token"] = page
-                data = await self._alpaca_get(f"/v2/stocks/{ticker.upper()}/bars", params)
+                data = await self._alpaca_get(
+                    f"/v2/stocks/{ticker.upper()}/bars", params
+                )
                 bars.extend(data.get("bars") or [])
                 page = data.get("next_page_token")
                 if not page:
                     break
-            return [{"t": _ms(b["t"]), "o": b["o"], "h": b["h"], "l": b["l"],
-                     "c": b["c"], "v": b["v"]} for b in bars][:limit]
+            return [
+                {
+                    "t": _ms(b["t"]),
+                    "o": b["o"],
+                    "h": b["h"],
+                    "l": b["l"],
+                    "c": b["c"],
+                    "v": b["v"],
+                }
+                for b in bars
+            ][:limit]
         except httpx.HTTPError as e:
             logger.warning("Alpaca aggregates failed", ticker=ticker, error=str(e))
-            raise ExternalAPIError("Alpaca", str(e))
+            raise ExternalAPIError("Alpaca", str(e)) from e
 
     # -- market status (clock) --
 
@@ -266,12 +317,15 @@ class AlpacaMarketClient(PolygonMarketClient):
         if not self.alpaca_enabled:
             return await super().get_market_status()
         from zoneinfo import ZoneInfo
+
         et = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York"))
         minutes = et.hour * 60 + et.minute
         weekday = et.weekday() < 5
         if weekday and 9 * 60 + 30 <= minutes < 16 * 60:
             market = "open"
-        elif weekday and (4 * 60 <= minutes < 9 * 60 + 30 or 16 * 60 <= minutes < 20 * 60):
+        elif weekday and (
+            4 * 60 <= minutes < 9 * 60 + 30 or 16 * 60 <= minutes < 20 * 60
+        ):
             market = "extended-hours"
         else:
             market = "closed"
@@ -287,6 +341,7 @@ class AlpacaMarketClient(PolygonMarketClient):
 
     async def get_ratios(self, symbol: str) -> Optional[Dict]:
         from src.ingestion import sec_facts
+
         try:
             try:
                 quote = await self.get_quote(symbol)
@@ -298,9 +353,11 @@ class AlpacaMarketClient(PolygonMarketClient):
             logger.warning("SEC ratios failed", symbol=symbol, error=str(e))
             return None
 
-    async def get_income_statements(self, symbol: str, timeframe: str = "annual",
-                                    limit: int = 4) -> List[Dict]:
+    async def get_income_statements(
+        self, symbol: str, timeframe: str = "annual", limit: int = 4
+    ) -> List[Dict]:
         from src.ingestion import sec_facts
+
         try:
             return await sec_facts.get_income_statements(symbol, timeframe, limit) or []
         except Exception as e:  # noqa: BLE001
@@ -309,6 +366,7 @@ class AlpacaMarketClient(PolygonMarketClient):
 
     async def get_filings(self, symbol: str, limit: int = 10) -> List[Dict]:
         from src.ingestion import sec_facts
+
         try:
             return await sec_facts.get_filings(symbol, limit) or []
         except Exception as e:  # noqa: BLE001
@@ -319,16 +377,19 @@ class AlpacaMarketClient(PolygonMarketClient):
 
     async def get_short_volume(self, symbol: str, limit: int = 5) -> List[Dict]:
         from src.ingestion import finra
+
         return await finra.get_short_volume(symbol, limit)
 
     async def get_short_interest(self, symbol: str, limit: int = 5) -> List[Dict]:
         from src.ingestion import finra
+
         return await finra.get_short_interest(symbol, limit)
 
     async def get_float(self, symbol: str) -> Optional[Dict]:
         """No free source publishes true free float. Report SEC cover-page
         shares outstanding under its own name; free_float stays null."""
         from src.ingestion import sec_facts
+
         try:
             rec = await sec_facts.shares_outstanding_record(symbol)
         except Exception as e:  # noqa: BLE001
@@ -367,8 +428,12 @@ class AlpacaMarketClient(PolygonMarketClient):
     async def _daily_closes(self, symbol: str, days: int) -> List[Dict]:
         today = datetime.now(timezone.utc).date()
         return await self.get_index_aggregates(
-            symbol, 1, "day", (today - timedelta(days=days)).isoformat(),
-            today.isoformat())
+            symbol,
+            1,
+            "day",
+            (today - timedelta(days=days)).isoformat(),
+            today.isoformat(),
+        )
 
     @staticmethod
     def _ema_series(values: List[float], window: int) -> List[float]:
@@ -382,8 +447,9 @@ class AlpacaMarketClient(PolygonMarketClient):
             out.append(ema)
         return out
 
-    async def get_sma(self, symbol: str, window: int = 50, timespan: str = "day",
-                      limit: int = 100) -> List[Dict]:
+    async def get_sma(
+        self, symbol: str, window: int = 50, timespan: str = "day", limit: int = 100
+    ) -> List[Dict]:
         if not self.alpaca_enabled:
             return await super().get_sma(symbol, window, timespan, limit)
         bars = await self._daily_closes(symbol, days=window * 2 + limit + 40)
@@ -397,18 +463,22 @@ class AlpacaMarketClient(PolygonMarketClient):
             out.append({"timestamp": bars[i]["t"], "value": running / window})
         return out[-limit:]
 
-    async def get_ema(self, symbol: str, window: int = 50, timespan: str = "day",
-                      limit: int = 100) -> List[Dict]:
+    async def get_ema(
+        self, symbol: str, window: int = 50, timespan: str = "day", limit: int = 100
+    ) -> List[Dict]:
         if not self.alpaca_enabled:
             return await super().get_ema(symbol, window, timespan, limit)
         bars = await self._daily_closes(symbol, days=window * 2 + limit + 40)
         series = self._ema_series([b["c"] for b in bars], window)
-        stamped = [{"timestamp": bars[window - 1 + i]["t"], "value": v}
-                   for i, v in enumerate(series)]
+        stamped = [
+            {"timestamp": bars[window - 1 + i]["t"], "value": v}
+            for i, v in enumerate(series)
+        ]
         return stamped[-limit:]
 
-    async def get_macd(self, symbol: str, timespan: str = "day",
-                       limit: int = 100) -> List[Dict]:
+    async def get_macd(
+        self, symbol: str, timespan: str = "day", limit: int = 100
+    ) -> List[Dict]:
         if not self.alpaca_enabled:
             return await super().get_macd(symbol, timespan=timespan, limit=limit)
         bars = await self._daily_closes(symbol, days=400)
@@ -425,12 +495,19 @@ class AlpacaMarketClient(PolygonMarketClient):
         for i, sig in enumerate(signal):
             j = sig_offset + i
             m = macd_line[j]
-            out.append({"timestamp": bars[25 + j]["t"], "value": m,
-                        "signal": sig, "histogram": m - sig})
+            out.append(
+                {
+                    "timestamp": bars[25 + j]["t"],
+                    "value": m,
+                    "signal": sig,
+                    "histogram": m - sig,
+                }
+            )
         return out[-limit:]
 
-    async def get_rsi(self, symbol: str, window: int = 14, timespan: str = "day",
-                      limit: int = 100) -> List[Dict]:
+    async def get_rsi(
+        self, symbol: str, window: int = 14, timespan: str = "day", limit: int = 100
+    ) -> List[Dict]:
         if not self.alpaca_enabled:
             return await super().get_rsi(symbol, window, timespan, limit)
         bars = await self._daily_closes(symbol, days=window * 3 + limit + 40)

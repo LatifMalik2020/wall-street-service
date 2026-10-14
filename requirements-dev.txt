@@ -2,7 +2,7 @@
 -r requirements.txt
 
 # Testing
-pytest>=8.0.0
+pytest>=9.0.3  # PYSEC-2026-1845 fixed in 9.0.3
 pytest-asyncio>=0.23.0
 pytest-cov>=5.0.0
 moto>=5.0.0
@@ -17,3 +17,6 @@ black>=24.3.0
 
 # Local environment
 python-dotenv>=1.0.0
+
+# Transitive via moto; 3.1.9 fixes CVE-2026-102598 (dev-only, not in the Lambda image)
+werkzeug>=3.1.9

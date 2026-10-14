@@ -82,7 +82,7 @@ class EarningsService:
         except ValueError:
             raise ValidationError(
                 f"Invalid prediction type: {prediction_type}", field="prediction"
-            )
+            ) from None
 
         # Find the event
         event = self.repo.get_event_by_ticker(ticker.upper())

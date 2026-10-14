@@ -292,10 +292,16 @@ class BeatCongressRepository(DynamoDBRepository):
             congressMemberParty=PoliticalParty(item.get("congressMemberParty", "D")),
             congressMemberChamber=Chamber(item.get("congressMemberChamber", "House")),
             startDate=datetime.fromisoformat(
-                item.get("startDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "startDate",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             endDate=datetime.fromisoformat(
-                item.get("endDate", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+                item.get(
+                    "endDate",
+                    datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+                )
             ),
             durationDays=int(item.get("durationDays", 30)),
             status=BeatCongressStatus(item.get("status", "ACTIVE")),

@@ -77,7 +77,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon quote error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_earnings_calendar(
         self, horizon: str = "3month"
@@ -121,7 +121,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon earnings error", error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def batch_quotes(self, symbols: List[str]) -> Dict[str, Dict]:
         """Get quotes for multiple symbols (no rate limiting needed - unlimited plan)."""
@@ -181,7 +181,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon ratios error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_income_statements(
         self, symbol: str, timeframe: str = "annual", limit: int = 4
@@ -209,7 +209,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon income statements error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_short_interest(self, symbol: str, limit: int = 5) -> List[Dict]:
         """Get short interest data for a ticker.
@@ -235,7 +235,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon short interest error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_short_volume(self, symbol: str, limit: int = 5) -> List[Dict]:
         """Get short volume data for a ticker.
@@ -261,7 +261,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon short volume error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_float(self, symbol: str) -> Optional[Dict]:
         """Get float data for a ticker.
@@ -284,7 +284,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon float error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     # ------------------------------------------------------------------
     # Technical indicators
@@ -322,7 +322,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon SMA error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_ema(
         self,
@@ -356,7 +356,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon EMA error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_macd(
         self,
@@ -394,7 +394,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon MACD error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_rsi(
         self,
@@ -428,7 +428,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon RSI error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     # ------------------------------------------------------------------
     # Market-level data
@@ -459,7 +459,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon IPOs error", error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_market_status(self) -> Optional[Dict]:
         """Get current market open/close status.
@@ -477,7 +477,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon market status error", error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_filings(self, symbol: str, limit: int = 10) -> List[Dict]:
         """Get SEC filings for a ticker.
@@ -503,7 +503,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon filings error", symbol=symbol, error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     async def get_stock_detail(self, symbol: str) -> Dict[str, Any]:
         """Combined call: snapshot + ratios + short interest for a stock detail page.
@@ -684,7 +684,7 @@ class PolygonMarketClient:
                 timespan=timespan,
                 error=str(e),
             )
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     def sync_get_index_aggregates(
         self,
@@ -734,7 +734,7 @@ class PolygonMarketClient:
 
         except httpx.HTTPError as e:
             logger.error("Polygon bulk snapshot error", error=str(e))
-            raise ExternalAPIError("Polygon", str(e))
+            raise ExternalAPIError("Polygon", str(e)) from e
 
     def sync_get_bulk_snapshot(self, symbols: List[str]) -> List[Dict]:
         return self._run(self.get_bulk_snapshot(symbols))

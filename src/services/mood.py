@@ -66,10 +66,12 @@ class MoodService:
         except ValueError:
             raise ValidationError(
                 f"Invalid sentiment: {predicted_sentiment}", field="predictedSentiment"
-            )
+            ) from None
 
         # Target date is 7 days from now
-        target_date = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
+        target_date = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+            days=7
+        )
         target_date = target_date.replace(
             hour=16, minute=0, second=0, microsecond=0
         )  # Market close

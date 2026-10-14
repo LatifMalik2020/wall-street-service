@@ -38,9 +38,17 @@ from src.utils.logging import logger
 _INDEX_TICKER_MAP: dict[str, dict] = {
     "SPX": {"proxyTicker": "SPY", "name": "S&P 500", "indexLevelFactor": 10.0},
     "NDX": {"proxyTicker": "QQQ", "name": "Nasdaq-100", "indexLevelFactor": 41.0},
-    "DJI": {"proxyTicker": "DIA", "name": "Dow Jones Industrial Average", "indexLevelFactor": 100.0},
+    "DJI": {
+        "proxyTicker": "DIA",
+        "name": "Dow Jones Industrial Average",
+        "indexLevelFactor": 100.0,
+    },
     "RUT": {"proxyTicker": "IWM", "name": "Russell 2000", "indexLevelFactor": 10.0},
-    "VIX": {"proxyTicker": "VIXY", "name": "CBOE Volatility Index", "indexLevelFactor": 1.0},
+    "VIX": {
+        "proxyTicker": "VIXY",
+        "name": "CBOE Volatility Index",
+        "indexLevelFactor": 1.0,
+    },
 }
 
 _VALID_PERIODS = frozenset({"5D", "1M", "3M", "YTD", "1Y", "5Y"})
@@ -359,11 +367,51 @@ def _format_mover(ticker_snapshot: dict) -> dict | None:
 # Curated universe of popular, liquid names so the home "movers" reads like
 # Robinhood's (recognizable tickers) instead of $0.40 penny stocks up 100%.
 _POPULAR_TICKERS = [
-    "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "AMD", "NFLX",
-    "DIS", "BA", "JPM", "BAC", "WMT", "KO", "XOM", "INTC", "CRM", "ORCL",
-    "ADBE", "PYPL", "UBER", "COIN", "PLTR", "SHOP", "SOFI", "RIVN", "F",
-    "GM", "T", "PFE", "NKE", "SBUX", "MCD", "COST", "HD", "QQQ", "SPY",
-    "AVGO", "MU", "MARA", "RIOT", "ABNB", "SNAP", "DKNG",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "TSLA",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "AMD",
+    "NFLX",
+    "DIS",
+    "BA",
+    "JPM",
+    "BAC",
+    "WMT",
+    "KO",
+    "XOM",
+    "INTC",
+    "CRM",
+    "ORCL",
+    "ADBE",
+    "PYPL",
+    "UBER",
+    "COIN",
+    "PLTR",
+    "SHOP",
+    "SOFI",
+    "RIVN",
+    "F",
+    "GM",
+    "T",
+    "PFE",
+    "NKE",
+    "SBUX",
+    "MCD",
+    "COST",
+    "HD",
+    "QQQ",
+    "SPY",
+    "AVGO",
+    "MU",
+    "MARA",
+    "RIOT",
+    "ABNB",
+    "SNAP",
+    "DKNG",
 ]
 
 
@@ -380,8 +428,11 @@ def _attach_sparks(client: AlpacaMarketClient, movers: list[dict]) -> None:
             continue
         try:
             bars = client.sync_get_index_aggregates(
-                ticker=symbol, multiplier=1, timespan="hour",
-                from_date=from_date, to_date=to_date,
+                ticker=symbol,
+                multiplier=1,
+                timespan="hour",
+                from_date=from_date,
+                to_date=to_date,
             )
             closes = [round(float(b["c"]), 2) for b in bars if b.get("c") is not None]
             if closes:
@@ -409,7 +460,8 @@ def get_movers() -> dict:
     movers = [m for m in movers if m.get("price")]
     gainers = sorted(
         [m for m in movers if m["changePercent"] > 0],
-        key=lambda m: m["changePercent"], reverse=True,
+        key=lambda m: m["changePercent"],
+        reverse=True,
     )[:6]
     losers = sorted(
         [m for m in movers if m["changePercent"] < 0],
@@ -433,7 +485,11 @@ def get_movers() -> dict:
 
 
 _YAHOO_INDEX_MAP = {
-    "SPX": "^GSPC", "DJI": "^DJI", "NDX": "^NDX", "COMP": "^IXIC", "RUT": "^RUT",
+    "SPX": "^GSPC",
+    "DJI": "^DJI",
+    "NDX": "^NDX",
+    "COMP": "^IXIC",
+    "RUT": "^RUT",
 }
 
 
@@ -450,6 +506,7 @@ def _yahoo_index_quote(symbol: str):
     import json as _json
     import urllib.parse as _up
     import urllib.request as _ur
+
     try:
         url = (
             "https://query1.finance.yahoo.com/v8/finance/chart/"

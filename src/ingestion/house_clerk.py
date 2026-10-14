@@ -10,6 +10,7 @@ member-profile enrichment path can fill it later. Senate eFD is phase 2.
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -17,6 +18,8 @@ from src.ingestion import house_ptr, legislators
 from src.models.congress import Chamber, CongressTrade, PoliticalParty, TransactionType
 from src.utils.logging import logger
 from src.utils.normalize import normalize_member_id
+
+FETCH_WORKERS = 8  # concurrent PTR PDF downloads; polite to the Clerk's site
 
 _TX_TYPES = {
     "buy": TransactionType.PURCHASE,
@@ -36,9 +39,12 @@ def _parse_date(raw: str) -> Optional[datetime]:
     return None
 
 
-def to_congress_trade(filing: "house_ptr.PTRFiling", trade: "house_ptr.PTRTrade",
-                      row: int,
-                      member_info: Optional[dict] = None) -> Optional[CongressTrade]:
+def to_congress_trade(
+    filing: "house_ptr.PTRFiling",
+    trade: "house_ptr.PTRTrade",
+    row: int,
+    member_info: Optional[dict] = None,
+) -> Optional[CongressTrade]:
     """One parsed PTR row -> CongressTrade (pure; None if dates unparseable).
     member_info (from legislators.lookup) supplies party + canonical name."""
     tx_date = _parse_date(trade.transaction_date)
@@ -46,15 +52,17 @@ def to_congress_trade(filing: "house_ptr.PTRFiling", trade: "house_ptr.PTRTrade"
     if not tx_date or not disc_date:
         return None
     member_name = (member_info or {}).get("fullName") or filing.member
-    party = {"D": PoliticalParty.DEMOCRAT, "R": PoliticalParty.REPUBLICAN,
-             "I": PoliticalParty.INDEPENDENT}.get(
-                 (member_info or {}).get("party", ""), PoliticalParty.UNKNOWN)
+    party = {
+        "D": PoliticalParty.DEMOCRAT,
+        "R": PoliticalParty.REPUBLICAN,
+        "I": PoliticalParty.INDEPENDENT,
+    }.get((member_info or {}).get("party", ""), PoliticalParty.UNKNOWN)
     member_id = normalize_member_id(member_name)
     return CongressTrade(
         # doc_id + row keeps ids unique when a member trades a ticker twice
         # in one filing (FMP's date_member_ticker scheme collapsed those)
         id=f"{disc_date.strftime('%Y%m%d')}_{member_id}_{trade.ticker}"
-           f"_{filing.doc_id}_{row:03d}",
+        f"_{filing.doc_id}_{row:03d}",
         memberId=member_id,
         memberName=member_name,
         party=party,
@@ -71,8 +79,9 @@ def to_congress_trade(filing: "house_ptr.PTRFiling", trade: "house_ptr.PTRTrade"
     )
 
 
-def fetch_latest_sync(year: Optional[int] = None,
-                      max_filings: int = 40) -> List[CongressTrade]:
+def fetch_latest_sync(
+    year: Optional[int] = None, max_filings: int = 40
+) -> List[CongressTrade]:
     """Trades from the freshest e-filed PTRs (blocking; wrapped async below)."""
     year = year or datetime.now(timezone.utc).year
     filings = [f for f in house_ptr.fetch_index(year) if f.is_efiled]
@@ -80,26 +89,37 @@ def fetch_latest_sync(year: Optional[int] = None,
         member_index = legislators.load_member_index()
     except Exception as e:
         member_index = {}
-        logger.warning("legislators dataset unavailable; party will be UNKNOWN",
-                       error=str(e))
+        logger.warning(
+            "legislators dataset unavailable; party will be UNKNOWN", error=str(e)
+        )
+    def _rows(filing):
+        try:
+            return house_ptr.parse_ptr(house_ptr.fetch_ptr_text(filing.doc_id, year))
+        except Exception as e:
+            logger.warning(
+                "House Clerk PTR fetch/parse failed", doc_id=filing.doc_id, error=str(e)
+            )
+            return None
+
+    # PDF downloads dominate wall time; fetched serially they blew the
+    # Lambda's 30s budget. map() keeps DocID order, so output is unchanged.
+    batch = filings[-max_filings:]
+    with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
+        results = list(pool.map(_rows, batch))
+
     trades: List[CongressTrade] = []
     parsed = failed = 0
-    for filing in filings[-max_filings:]:
-        try:
-            rows = house_ptr.parse_ptr(house_ptr.fetch_ptr_text(filing.doc_id, year))
-            parsed += 1
-        except Exception as e:
+    for filing, rows in zip(batch, results, strict=True):
+        if rows is None:
             failed += 1
-            logger.warning("House Clerk PTR fetch/parse failed",
-                           doc_id=filing.doc_id, error=str(e))
             continue
+        parsed += 1
         info = legislators.lookup(member_index, filing.state_dst, filing.last)
         for n, row in enumerate(rows):
             trade = to_congress_trade(filing, row, n, member_info=info)
             if trade:
                 trades.append(trade)
-    logger.info("House Clerk ingest", filings=parsed, failed=failed,
-                trades=len(trades))
+    logger.info("House Clerk ingest", filings=parsed, failed=failed, trades=len(trades))
     return trades
 
 

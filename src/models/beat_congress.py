@@ -51,7 +51,9 @@ class BeatCongressGame(BaseEntity):
     @property
     def days_remaining(self) -> int:
         """Days remaining in the game."""
-        remaining = (self.endDate - datetime.now(timezone.utc).replace(tzinfo=None)).days
+        remaining = (
+            self.endDate - datetime.now(timezone.utc).replace(tzinfo=None)
+        ).days
         return max(0, remaining)
 
 

@@ -1,9 +1,9 @@
 """Shadow-portfolio API handlers.
 
-  GET  /wall-street/shadow/roster          — followable filers + staleness
-  POST /wall-street/shadow/follow          — {cik, allocation} start a shadow
-  GET  /wall-street/shadow/{cik}           — a user's shadow (lazy-rebalanced)
-  GET  /wall-street/shadow/trades          — user's shadow trade feed
+GET  /wall-street/shadow/roster          — followable filers + staleness
+POST /wall-street/shadow/follow          — {cik, allocation} start a shadow
+GET  /wall-street/shadow/{cik}           — a user's shadow (lazy-rebalanced)
+GET  /wall-street/shadow/trades          — user's shadow trade feed
 """
 
 import json
@@ -33,6 +33,7 @@ def _live_prices(tickers: List[str]) -> Dict[str, float]:
         return {}
     try:
         from src.ingestion.alpaca_market import market_data_client
+
         client = market_data_client()
         quotes = client._run(client.batch_quotes(tickers))
         return {sym: q["price"] for sym, q in quotes.items() if q.get("price", 0) > 0}
@@ -84,8 +85,10 @@ def get_user_shadow_trades(user_id: str, limit: int = 50) -> dict:
 def refresh_shadow_filers() -> dict:
     """EventBridge daily job — check all roster filers for new filings."""
     service = _service()
-    results = [service.refresh_filer(cik)
-               for cik in sorted(set(shadow_engine_filers().values()))]
+    results = [
+        service.refresh_filer(cik)
+        for cik in sorted(set(shadow_engine_filers().values()))
+    ]
     updated = [r for r in results if r.get("status") == "updated"]
     logger.info("shadow filer refresh", updated=len(updated), total=len(results))
     return _response(200, {"results": results})

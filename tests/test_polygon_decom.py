@@ -21,7 +21,9 @@ from src.utils.errors import ExternalAPIError  # noqa: E402
 
 
 def run(coro):
-    return asyncio.new_event_loop().run_until_complete(coro)
+    # asyncio.run closes its loop; a bare new_event_loop() leaked one per call
+    # and surfaced as "unclosed event loop" ResourceWarnings in later tests.
+    return asyncio.run(coro)
 
 
 @pytest.fixture

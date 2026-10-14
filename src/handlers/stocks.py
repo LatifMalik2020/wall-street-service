@@ -268,7 +268,9 @@ def get_stock_financials(symbol: str, timeframe: str = "annual") -> dict:
     client = market_data_client()
     # SEC-sourced; log and emit an empty list rather than bubbling up as a 502.
     try:
-        raw_list = client.sync_get_income_statements(symbol, timeframe=timeframe, limit=4)
+        raw_list = client.sync_get_income_statements(
+            symbol, timeframe=timeframe, limit=4
+        )
     except Exception as exc:
         logger.warning("Financials fetch failed", symbol=symbol, error=str(exc))
         raw_list = []

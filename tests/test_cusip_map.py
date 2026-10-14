@@ -38,7 +38,7 @@ class MapTests(unittest.TestCase):
 
         def fake_urlopen(req, timeout=0):
             calls["n"] += 1
-            jobs = json.loads(req.data.decode())
+            json.loads(req.data.decode())  # body must be valid JSON
             if calls["n"] == 1:
                 # first batch: one hit, one per-job throttle error
                 return FakeResp([

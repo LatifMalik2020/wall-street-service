@@ -195,8 +195,12 @@ class CongressService:
                 for trade in recent_trades:
                     try:
                         self.repo.save_trade(trade)
-                    except Exception:
-                        pass  # Best-effort backfill
+                    except Exception as e:  # Best-effort backfill
+                        logger.warning(
+                            "Member partition backfill failed",
+                            member_id=member_id,
+                            error=str(e),
+                        )
 
         if not recent_trades:
             member.recentTrades = []
