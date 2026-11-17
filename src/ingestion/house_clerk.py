@@ -92,6 +92,7 @@ def fetch_latest_sync(
         logger.warning(
             "legislators dataset unavailable; party will be UNKNOWN", error=str(e)
         )
+
     def _rows(filing):
         try:
             return house_ptr.parse_ptr(house_ptr.fetch_ptr_text(filing.doc_id, year))

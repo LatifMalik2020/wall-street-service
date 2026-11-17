@@ -18,12 +18,15 @@ Senate eFD is session-gated and phase 2. Requires pypdf (only non-stdlib dep).
 from __future__ import annotations
 
 import io
+import logging
 import re
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 INDEX_URL = (
     "https://disclosures-clerk.house.gov/public_disc/financial-pdfs/{year}FD.zip"
@@ -161,8 +164,10 @@ def latest_trades(year: int, max_filings: int = 10) -> List[dict]:
     for filing in filings[-max_filings:]:
         try:
             trades = parse_ptr(fetch_ptr_text(filing.doc_id, year))
-        except Exception:
-            continue  # single bad PDF must not kill the batch
+        except Exception as e:
+            # single bad PDF must not kill the batch -- but say which one
+            logger.warning("skipping unparseable PTR %s: %s", filing.doc_id, e)
+            continue
         for t in trades:
             out.append(
                 {

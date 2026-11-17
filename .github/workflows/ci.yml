@@ -25,7 +25,9 @@ jobs:
 
       - name: Run linting
         run: |
-          pip install ruff black
+          # Pinned: unpinned ruff/black drifted (ruff 0.16 default-rule change,
+          # black yearly style) and turned CI red with no code change. Bump deliberately.
+          pip install ruff==0.17.5 black==26.10.1
           ruff check src/
           black --check src/
 
@@ -34,7 +36,7 @@ jobs:
         # never been green; keep the signal without blocking test/build.
         continue-on-error: true
         run: |
-          pip install mypy boto3-stubs[dynamodb,events]
+          pip install mypy==2.4.1 "boto3-stubs[dynamodb,events]"
           mypy src/ --ignore-missing-imports
 
       - name: Run tests

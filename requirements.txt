@@ -17,7 +17,7 @@ anyio>=4.14.2  # transitive via httpx; 4.14.2 fixes CVE-2026-63374, CVE-2026-648
 structlog>=24.1.0
 
 # PDF parsing (House PTR ingestion, src/ingestion/house_ptr.py)
-pypdf>=6.0.0,<7
+pypdf>=7.0.1,<8  # 6.21.4 fixes CVE-2026-119203/-119204/-119205; 7.0.0/7.0.1 add further parser hardening
 
 # transitive via botocore/requests; 2.8.0 fixes PYSEC-2026-4175/-4176/-4177
 urllib3>=2.8.0,<3

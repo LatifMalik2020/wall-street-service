@@ -17,11 +17,14 @@ Stdlib only.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
 import urllib.request
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 OPENFIGI_URL = "https://api.openfigi.com/v3/mapping"
 EDGAR_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
@@ -46,8 +49,9 @@ def _save_cache(cache: Dict[str, Dict[str, str]]) -> None:
     try:
         with open(CACHE_PATH, "w") as f:
             json.dump(cache, f)
-    except Exception:
-        pass
+    except Exception as e:
+        # cache is best-effort; lookups still work, they just re-hit OpenFIGI
+        logger.warning("could not write CUSIP cache %s: %s", CACHE_PATH, e)
 
 
 def _openfigi_batch(cusips: List[str]) -> tuple:
